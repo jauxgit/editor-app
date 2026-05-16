@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-width: 260px;
+  --statusbar-height: 28px;
+  --toolbar-height: 40px;
+}
+
+/* ===== CodeMirror ===== */
+.cm-editor {
+  height: 100%;
+  font-size: 15px;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+.cm-editor .cm-scroller { overflow: auto; }
+
+/* ===== 图片 Widget ===== */
+.cm-image-widget {
+  display: inline-block;
+  max-width: 80%;
+  margin: 4px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.cm-image-widget:hover { border-color: #6366f1; }
+.cm-image-widget.selected {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+.cm-image-widget img { display: block; max-width: 100%; height: auto; }
+
+/* ===== Markdown Preview ===== */
+.markdown-preview {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.75;
+  padding: 2rem;
+  overflow-y: auto;
+  height: 100%;
+}
+.markdown-preview h1 { font-size: 2rem; font-weight: 700; margin: 1.5rem 0 0.75rem; }
+.markdown-preview h2 { font-size: 1.5rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+.markdown-preview h3 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.markdown-preview p { margin: 0.5rem 0; }
+.markdown-preview img { max-width: 100%; border-radius: 6px; margin: 0.75rem 0; }
+.markdown-preview code { background: #f3f4f6; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+.markdown-preview pre { background: #1f2937; color: #e5e7eb; padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 0.75rem 0; }
+.markdown-preview pre code { background: none; padding: 0; }
+.markdown-preview blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; color: #6b7280; margin: 0.75rem 0; }
+.markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
+.markdown-preview th, .markdown-preview td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; text-align: left; }
+.markdown-preview th { background: #f9fafb; font-weight: 600; }
+
+/* ===== Dark 预览覆盖 ===== */
+.dark .markdown-preview code { background: #374151; color: #e5e7eb; }
+.dark .markdown-preview blockquote { color: #9ca3af; }
+.dark .markdown-preview th { background: #1f2937; border-color: #374151; }
+.dark .markdown-preview td { border-color: #374151; }
+.dark .markdown-preview a { color: #818cf8; }
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* ===== 全局 ===== */
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
