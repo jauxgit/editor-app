@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol, net } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readFile, writeFile, readdir, mkdir, copyFile } from 'node:fs/promises'
@@ -10,20 +10,53 @@ const isDev = !app.isPackaged
 
 // ===== 自定义协议：serve dist 文件，解决 file:// 下 ESM 的 CORS 问题 =====
 function registerCustomProtocol() {
-  protocol.handle('markedit', (request) => {
+  protocol.handle('markedit', async (request) => {
     const url = new URL(request.url)
-    // 映射 markedit://index.html → dist/index.html
-    let filePath = join(__dirname, '../dist', url.pathname === '/' ? 'index.html' : url.pathname)
-
-    // 规范化路径，防止目录遍历
     const distDir = join(__dirname, '../dist')
-    filePath = join(distDir, url.pathname === '/' ? 'index.html' : url.pathname)
+
+    // 映射 markedit://index.html → dist/index.html
+    const reqPath = url.pathname === '/' ? 'index.html' : url.pathname
+    const filePath = join(distDir, reqPath)
+
+    // 防止目录遍历
     if (!filePath.startsWith(distDir)) {
       return new Response('Forbidden', { status: 403 })
     }
 
-    return net.fetch('file:///' + filePath.replace(/\\/g, '/'))
+    try {
+      const data = await readFile(filePath)
+      const ext = extname(filePath).toLowerCase()
+      const mime = MIME_TYPES[ext] || 'application/octet-stream'
+
+      return new Response(data, {
+        status: 200,
+        headers: {
+          'Content-Type': mime,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache',
+        },
+      })
+    } catch {
+      return new Response('Not Found', { status: 404 })
+    }
   })
+}
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
 }
 
 function createWindow() {
@@ -35,7 +68,7 @@ function createWindow() {
     title: 'MarkEdit — 混合笔记编辑器',
     titleBarStyle: 'hiddenInset',
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
