@@ -26,27 +26,30 @@ interface Props {
   onScrollChange?: (ratio: number) => void
 }
 
-/** 代码块语言映射 — 按需加载语法高亮 */
-function createCodeLanguages(): Record<string, LanguageSupport> {
-  return {
-    javascript: javascript(),
-    js: javascript(),
-    jsx: javascript({ jsx: true }),
-    typescript: javascript({ typescript: true }),
-    ts: javascript({ typescript: true }),
-    tsx: javascript({ typescript: true, jsx: true }),
-    python: python(),
-    py: python(),
-    json: json(),
-    css: css(),
-    html: html(),
-    bash: javascript(),    // 回退：bash 没有独立包，用 JS 的 tokenizer 近似渲染
-    sh: javascript(),
-    rust: javascript(),    // 后续可安装 @codemirror/lang-rust
-    go: javascript(),
-    yaml: javascript(),
-    toml: javascript(),
-  }
+/** 代码块语言映射 — 模块级单例，避免每次渲染重建 */
+const codeLanguages: Record<string, LanguageSupport> = {
+  javascript: javascript(),
+  js: javascript(),
+  jsx: javascript({ jsx: true }),
+  typescript: javascript({ typescript: true }),
+  ts: javascript({ typescript: true }),
+  tsx: javascript({ typescript: true, jsx: true }),
+  python: python(),
+  py: python(),
+  json: json(),
+  css: css(),
+  html: html(),
+  bash: javascript(),
+  sh: javascript(),
+  rust: javascript(),
+  go: javascript(),
+  yaml: javascript(),
+  toml: javascript(),
+}
+
+function getCodeParser(info: string): LanguageSupport | null {
+  const lang = codeLanguages[info]
+  return lang || null
 }
 
 /**
@@ -93,18 +96,18 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       crosshairCursor(),
       history(),
       closeBrackets(),
-      indentWithTab,
       syntaxHighlighting(defaultHighlightStyle),
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
         ...closeBracketsKeymap,
+        indentWithTab,
       ]),
       multiCursorKeymap,
       markdown({
         base: markdownLanguage,
-        codeLanguages: createCodeLanguages(),
+        codeLanguages: getCodeParser,
       }),
       // 图片内联渲染插件
       imageViewPlugin(root),

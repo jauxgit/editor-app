@@ -143,6 +143,19 @@ CodeMirror 6 内置了 Ctrl+O 键绑定（在当前行下方插入新行），�
 - 浏览器环境（fallback）：base64 内联
 - CM6 Image Widget 优先加载缩略图，失败时回退原图
 
+### 7. indentWithTab 不能直接放在 extensions 数组中
+`indentWithTab`（来自 `@codemirror/commands`）是一个 `KeyBinding` 对象 `{ key: "Tab", run: indentMore, shift: indentLess }`，**不是 Extension**。直接放在 `extensions` 数组中会导致 CodeMirror 在遍历扩展时无法识别该对象（不属于 CompartmentInstance/PrecExtension/StateField/FacetProvider，也没有 `.extension` 属性），抛出 `"Unrecognized extension value in extension set"` → **编辑器创建失败 → 白屏**。
+**修法**：将 `indentWithTab` 移入 `keymap.of([...])` 内部，与 `defaultKeymap`、`historyKeymap` 等放在一起。
+
+### 8. codeLanguages 必须传入函数而非普通对象
+`@codemirror/lang-markdown` v6.5 的 `codeLanguages` 选项接受两种形式：
+- 函数 `(info: string) => LanguageSupport | null`
+- 数组/可迭代对象
+
+传入 `Record<string, LanguageSupport>` 普通对象会在 `LanguageDescription.matchLanguageName()` 中对它做 `for...of` 迭代，JavaScript 普通对象不可迭代 → `"descs is not iterable"` → **编辑器创建失败**。
+**修法**：将 `codeLanguages` 声明为模块级 `Record`，传入一个 `getCodeParser(info: string)` 查表函数。
+同时也避免了 `createCodeLanguages()` 在每次渲染时重建 `LanguageSupport` 实例的性能问题。
+
 ## 已实现功能
 
 | 功能 | 状态 | 关键文件 |
@@ -155,7 +168,8 @@ CodeMirror 6 内置了 Ctrl+O 键绑定（在当前行下方插入新行），�
 | 文件树 + 多标签 + 脏状态 | ✅ | `FileTree.tsx`, `workspaceStore.ts` |
 | Cmd+S 保存、Ctrl+O 打开文件/文件夹 | ✅ | `EditorWrapper.tsx`, `AppLayout.tsx` |
 | 命令面板 (Cmd+Shift+P) | ✅ | `CommandPalette.tsx`, `commands.ts` |
-| 代码块语法高亮（JS/TS/Python/JSON/CSS/HTML） | ✅ | `EditorWrapper.tsx` createCodeLanguages() |
+| 代码块语法高亮（JS/TS/Python/JSON/CSS/HTML） | ✅ | `EditorWrapper.tsx` getCodeParser() |
+| 文件树递归展开子目录（懒加载） | ✅ | `FileTree.tsx` TreeNode |
 | 编辑↔预览滚动同步 | ✅ | `EditorWrapper.tsx` onScrollChange |
 
 ## IPC 接口清单
