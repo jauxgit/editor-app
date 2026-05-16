@@ -52,6 +52,7 @@ function getCodeParser(info: string): LanguageSupport | null {
   return lang || null
 }
 
+
 /**
  * CodeMirror 6 编辑器 React 包装器
  * 每个 Tab 持有一个独立的 EditorView 实例
