@@ -12,6 +12,7 @@ export interface ElectronAPI {
   openFolderDialog: () => Promise<{ path: string } | null>
   listDir: (dirPath: string) => Promise<FileEntry[]>
   ensureDir: (dirPath: string) => Promise<void>
+  showConfirmDialog: (message: string, title: string) => Promise<boolean>
   copyImage: (sourcePath: string, workspaceRoot: string) => Promise<{
     success: boolean
     relativePath: string

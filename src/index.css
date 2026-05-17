@@ -179,3 +179,7 @@
 
 /* ===== 全局 ===== */
 html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+
+/* ===== 拖拽覆盖层 ===== */
+.drag-over-overlay { background: rgba(99, 102, 241, 0.04); }
+.dark .drag-over-overlay { background: rgba(99, 102, 241, 0.08); }

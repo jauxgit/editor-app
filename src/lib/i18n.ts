@@ -88,6 +88,10 @@ const messages: Record<Lang, Record<string, string>> = {
 
     // TOC / Outline
     'toc.title': 'Outline',
+
+    // Drag and drop
+    'drag.trust.title': 'Trust Folder',
+    'drag.trust.message': 'Do you trust this folder and allow MarkEdit to read all files within it?\n\n{folder}',
   },
   zh: {
     'menu.file': '文件',
@@ -163,6 +167,10 @@ const messages: Record<Lang, Record<string, string>> = {
 
     // TOC / Outline
     'toc.title': '目录',
+
+    // Drag and drop
+    'drag.trust.title': '信任文件夹',
+    'drag.trust.message': '是否信任此文件夹并允许 MarkEdit 读取其中的所有文件？\n\n{folder}',
   },
 }
 
