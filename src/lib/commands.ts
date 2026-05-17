@@ -20,6 +20,10 @@ class CommandRegistry {
     this.commands.push(...cmds)
   }
 
+  clear() {
+    this.commands = []
+  }
+
   /** 模糊搜索 */
   search(query: string): Command[] {
     if (!query.trim()) return [...this.commands]

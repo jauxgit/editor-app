@@ -31,4 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ===== 系统 =====
   getAppPath: () => ipcRenderer.invoke('app:getPath'),
+
+  // ===== 语言切换 =====
+  setLanguage: (lang) => ipcRenderer.send('language:changed', lang),
 })

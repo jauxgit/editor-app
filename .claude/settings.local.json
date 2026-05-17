@@ -15,7 +15,14 @@
       "WebSearch",
       "Skill(find-docs)",
       "Bash(npx ctx7@latest *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(export ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\")",
+      "Bash(export ELECTRON_BUILDER_BINARIES_MIRROR=\"https://npmmirror.com/mirrors/electron-builder-binaries/\")",
+      "Bash(npx electron-builder *)",
+      "Bash(cp -r node_modules .staging/)",
+      "Bash(npx asar *)",
+      "Bash(xargs -n1 basename)",
+      "Bash(sed 's/\\\\.min\\\\.css//')"
     ]
   }
 }

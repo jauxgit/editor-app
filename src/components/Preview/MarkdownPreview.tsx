@@ -1,6 +1,7 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, useInsertionEffect } from 'react'
 import { renderMarkdown } from '../../lib/markdown'
 import { useEditorStore } from '../../stores/editorStore'
+import { applyHighlightTheme } from '../../lib/highlightThemes'
 
 interface Props {
   content: string
@@ -12,15 +13,23 @@ interface Props {
 export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props) {
   const html = useMemo(() => renderMarkdown(content), [content])
   const theme = useEditorStore(s => s.theme)
+  const highlightTheme = useEditorStore(s => s.highlightTheme)
   const ref = useRef<HTMLDivElement>(null)
+  const isSyncing = useRef(false)
 
-  // 同步滚动位置
+  useInsertionEffect(() => {
+    applyHighlightTheme(highlightTheme)
+  }, [highlightTheme])
+
+  // 同步滚动位置（来自编辑器）
   useEffect(() => {
     if (!ref.current || scrollRatio === undefined) return
     const el = ref.current
     const max = el.scrollHeight - el.clientHeight
     if (max > 0) {
+      isSyncing.current = true
       el.scrollTop = scrollRatio * max
+      requestAnimationFrame(() => { isSyncing.current = false })
     }
   }, [scrollRatio])
 
@@ -29,6 +38,7 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     const el = ref.current
     if (!el || !onScrollChange) return
     const handler = () => {
+      if (isSyncing.current) return
       const max = el.scrollHeight - el.clientHeight
       if (max > 0) onScrollChange(el.scrollTop / max)
     }

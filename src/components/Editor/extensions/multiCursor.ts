@@ -1,5 +1,5 @@
 import { keymap, EditorView } from '@codemirror/view'
-import { EditorSelection, type SelectionRange } from '@codemirror/state'
+import { EditorSelection } from '@codemirror/state'
 
 /**
  * 在当前文档中查找下一个匹配项（从 pos 之后开始）

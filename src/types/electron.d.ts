@@ -28,6 +28,7 @@ export interface ElectronAPI {
   onFolderOpened: (cb: (data: { path: string }) => void) => void
   onMenuSave: (cb: () => void) => void
   getAppPath: () => Promise<string>
+  setLanguage: (lang: string) => void
 }
 
 declare global {

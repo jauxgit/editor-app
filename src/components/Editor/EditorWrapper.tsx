@@ -6,12 +6,20 @@ import {
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle, type LanguageSupport } from '@codemirror/language'
+import { syntaxHighlighting, defaultHighlightStyle, type Language, type LanguageSupport } from '@codemirror/language'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { json } from '@codemirror/lang-json'
 import { css } from '@codemirror/lang-css'
 import { html } from '@codemirror/lang-html'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { go } from '@codemirror/lang-go'
+import { rust } from '@codemirror/lang-rust'
+import { php } from '@codemirror/lang-php'
+import { sql } from '@codemirror/lang-sql'
+import { xml } from '@codemirror/lang-xml'
+import { yaml } from '@codemirror/lang-yaml'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { oneDark } from '@codemirror/theme-one-dark'
@@ -39,17 +47,31 @@ const codeLanguages: Record<string, LanguageSupport> = {
   json: json(),
   css: css(),
   html: html(),
+  // 新增语言
+  java: java(),
+  cpp: cpp(),
+  c: cpp(),
+  'c++': cpp(),
+  go: go(),
+  rust: rust(),
+  php: php(),
+  sql: sql(),
+  xml: xml(),
+  yaml: yaml(),
+  toml: yaml(),
+  // 无专属解析器的语言 — 用近亲代替
+  csharp: java(),
+  'c#': java(),
+  kotlin: java(),
+  scala: java(),
+  swift: java(),
   bash: javascript(),
   sh: javascript(),
-  rust: javascript(),
-  go: javascript(),
-  yaml: javascript(),
-  toml: javascript(),
 }
 
-function getCodeParser(info: string): LanguageSupport | null {
+function getCodeParser(info: string): Language | null {
   const lang = codeLanguages[info]
-  return lang || null
+  return lang?.language ?? null
 }
 
 /**
@@ -88,6 +110,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
 
     const extensions = [
       lineNumbers(),
+      EditorView.lineWrapping,
       highlightActiveLine(),
       highlightSpecialChars(),
       highlightSelectionMatches(),

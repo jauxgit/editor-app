@@ -2,12 +2,17 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
+import rehypeHighlight from 'rehype-highlight'
 import rehypeStringify from 'rehype-stringify'
+import { rehypeMarkExplicitLanguage, rehypeCodeLabels } from './rehype-code-labels'
 
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: false })
+  .use(rehypeMarkExplicitLanguage)
+  .use(rehypeHighlight)
+  .use(rehypeCodeLabels)
   .use(rehypeStringify, { allowDangerousHtml: false })
 
 /** Markdown → HTML（remark/rehype 管线，processSync） */

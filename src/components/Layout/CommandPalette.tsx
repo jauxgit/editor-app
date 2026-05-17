@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { commands, type Command } from '../../lib/commands'
 import { useEditorStore } from '../../stores/editorStore'
+import { highlightThemes } from '../../lib/highlightThemes'
+import { useT } from '../../lib/i18n'
 
 interface Props {
   isOpen: boolean
@@ -12,6 +14,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const theme = useEditorStore(s => s.theme)
+  const t = useT()
 
   const results: Command[] = commands.search(query)
 
@@ -81,7 +84,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
             value={query}
             onChange={e => { setQuery(e.target.value); setIndex(0) }}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command..."
+            placeholder={t('cmdPalette.placeholder')}
             className={`flex-1 outline-none text-sm ${inputBg} placeholder:${dimText}`}
             spellCheck={false}
           />
@@ -99,7 +102,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
         <div className="max-h-72 overflow-y-auto py-2">
           {results.length === 0 ? (
             <div className={`px-4 py-6 text-center text-sm ${dimText}`}>
-              No matching commands
+              {t('cmdPalette.noResults')}
             </div>
           ) : (
             results.map((cmd, i) => (
@@ -126,9 +129,9 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 
         {/* 提示 */}
         <div className={`px-4 py-1.5 border-t border-gray-700/20 text-xs ${dimText} flex gap-4`}>
-          <span>↑↓ Navigate</span>
-          <span>↵ Execute</span>
-          <span>Esc Close</span>
+          <span>{t('cmdPalette.navigate')}</span>
+          <span>{t('cmdPalette.execute')}</span>
+          <span>{t('cmdPalette.close')}</span>
         </div>
       </div>
     </div>
@@ -139,28 +142,39 @@ export function CommandPalette({ isOpen, onClose }: Props) {
  * 注册所有可用命令
  */
 export function useRegisterCommands() {
-  const viewMode = useEditorStore(s => s.viewMode)
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const setHighlightTheme = useEditorStore(s => s.setHighlightTheme)
+  const setLanguage = useEditorStore(s => s.setLanguage)
+  const language = useEditorStore(s => s.language)
+  const t = useT()
 
   useEffect(() => {
+    commands.clear()
     commands.registerAll([
-      { id: 'view.source', label: 'View: Source Mode', category: 'View', action: () => setViewMode('source') },
-      { id: 'view.preview', label: 'View: Preview Mode', category: 'View', action: () => setViewMode('preview') },
-      { id: 'view.split', label: 'View: Split Mode', category: 'View', action: () => setViewMode('split') },
-      { id: 'view.toggle-file-tree', label: 'View: Toggle File Tree', category: 'View', action: toggleFileTree },
-      { id: 'view.toggle-theme', label: 'View: Toggle Dark/Light Theme', category: 'View', action: toggleTheme },
-      { id: 'file.open', label: 'File: Open File', category: 'File', action: () => {
-        // 触发 Electron 的打开文件对话框
+      { id: 'view.source', label: t('cmd.view.source'), category: t('cmd.category.view'), action: () => setViewMode('source') },
+      { id: 'view.preview', label: t('cmd.view.preview'), category: t('cmd.category.view'), action: () => setViewMode('preview') },
+      { id: 'view.split', label: t('cmd.view.split'), category: t('cmd.category.view'), action: () => setViewMode('split') },
+      { id: 'view.toggle-file-tree', label: t('cmd.view.toggleFileTree'), category: t('cmd.category.view'), action: toggleFileTree },
+      { id: 'view.toggle-theme', label: t('cmd.view.toggleTheme'), category: t('cmd.category.view'), action: toggleTheme },
+      { id: 'file.open', label: t('cmd.file.open'), category: t('cmd.category.file'), action: () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, metaKey: true }))
       }},
-      { id: 'file.open-folder', label: 'File: Open Folder', category: 'File', action: () => {
+      { id: 'file.open-folder', label: t('cmd.file.openFolder'), category: t('cmd.category.file'), action: () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', shiftKey: true, ctrlKey: true, metaKey: true }))
       }},
-      { id: 'file.save', label: 'File: Save', category: 'File', action: () => {
+      { id: 'file.save', label: t('cmd.file.save'), category: t('cmd.category.file'), action: () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, metaKey: true }))
       }},
+      ...highlightThemes.map(theme => ({
+        id: `theme.highlight.${theme.id}`,
+        label: `${t('cmd.category.theme')}: ${t(`theme.${theme.id}`)}`,
+        category: t('cmd.category.theme'),
+        action: () => setHighlightTheme(theme.id),
+      })),
+      { id: 'language.en', label: `${t('cmd.category.language')}: ${t('language.en')}`, category: t('cmd.category.language'), action: () => setLanguage('en') },
+      { id: 'language.zh', label: `${t('cmd.category.language')}: ${t('language.zh')}`, category: t('cmd.category.language'), action: () => setLanguage('zh') },
     ])
-  }, [setViewMode, toggleFileTree, toggleTheme])
+  }, [setViewMode, toggleFileTree, toggleTheme, setHighlightTheme, setLanguage, language, t])
 }

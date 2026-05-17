@@ -11,11 +11,15 @@ const isDev = !app.isPackaged
 // ===== 自定义协议：serve dist 文件，解决 file:// 下 ESM 的 CORS 问题 =====
 function registerCustomProtocol() {
   protocol.handle('markedit', async (request) => {
+    // markedit:// 的 host+pathname 组成完整文件路径
+    // 例如 markedit://index.html → host=index.html, pathname=/
+    // 例如 markedit://assets/foo.js → host=assets, pathname=/foo.js
     const url = new URL(request.url)
     const distDir = join(__dirname, '../dist')
 
-    // 映射 markedit://index.html → dist/index.html
-    const reqPath = url.pathname === '/' ? 'index.html' : url.pathname
+    let reqPath = url.host + url.pathname
+    if (reqPath.endsWith('/')) reqPath = reqPath.slice(0, -1)
+
     const filePath = join(distDir, reqPath)
 
     // 防止目录遍历
@@ -65,7 +69,7 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 500,
-    title: 'MarkEdit — 混合笔记编辑器',
+    title: 'MarkEdit',
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: join(__dirname, 'preload.cjs'),
@@ -77,64 +81,13 @@ function createWindow() {
 
   if (isDev) {
     win.loadURL('http://localhost:5173')
-    win.webContents.openDevTools({ mode: 'detach' })
   } else {
-    // 使用自定义协议加载，避免 file:// 的 ESM CORS 限制
     win.loadURL('markedit://index.html')
   }
 
-  const template = buildMenu(win)
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
-}
+  Menu.setApplicationMenu(null)
 
-function buildMenu(win) {
-  return [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Open File...',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => handleOpenFile(win),
-        },
-        {
-          label: 'Open Folder...',
-          accelerator: 'CmdOrCtrl+Shift+O',
-          click: () => handleOpenFolder(win),
-        },
-        { type: 'separator' },
-        {
-          label: 'Save',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => win.webContents.send('menu:save'),
-        },
-        { type: 'separator' },
-        { role: 'quit' },
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { role: 'resetZoom' },
-      ],
-    },
-  ]
+  return win
 }
 
 // ===== IPC Handlers =====
