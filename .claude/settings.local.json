@@ -11,7 +11,11 @@
       "Bash(cp -r dist/* .staging/dist/)",
       "Bash(cp -r electron/* .staging/electron/)",
       "Bash(cp package.json .staging/)",
-      "Bash(powershell -Command \"Compress-Archive -Path 'release\\\\win-unpacked\\\\*' -DestinationPath 'release\\\\MarkEdit-portable-win32-x64.zip' -Force\")"
+      "Bash(powershell -Command \"Compress-Archive -Path 'release\\\\win-unpacked\\\\*' -DestinationPath 'release\\\\MarkEdit-portable-win32-x64.zip' -Force\")",
+      "WebSearch",
+      "Skill(find-docs)",
+      "Bash(npx ctx7@latest *)",
+      "Bash(npm install *)"
     ]
   }
 }

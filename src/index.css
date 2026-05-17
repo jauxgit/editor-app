@@ -52,13 +52,31 @@
 .markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
 .markdown-preview th, .markdown-preview td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; text-align: left; }
 .markdown-preview th { background: #f9fafb; font-weight: 600; }
+.markdown-preview h4 { font-size: 1.125rem; font-weight: 600; margin: 0.75rem 0 0.375rem; }
+.markdown-preview h5 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.markdown-preview h6 { font-size: 0.875rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #6b7280; }
+.markdown-preview strong { font-weight: 700; }
+.markdown-preview em { font-style: italic; }
+.markdown-preview hr { border: none; border-top: 1px solid #d1d5db; margin: 1.5rem 0; }
+.markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-preview li { margin: 0.25rem 0; }
+.markdown-preview ul > li { list-style-type: disc; }
+.markdown-preview ol > li { list-style-type: decimal; }
+.markdown-preview del, .markdown-preview s { text-decoration: line-through; color: #9ca3af; }
+.markdown-preview a { color: #4f46e5; text-decoration: underline; }
+.markdown-preview a:hover { color: #4338ca; }
+.markdown-preview input[type="checkbox"] { margin-right: 0.375rem; }
 
 /* ===== Dark 预览覆盖 ===== */
 .dark .markdown-preview code { background: #374151; color: #e5e7eb; }
 .dark .markdown-preview blockquote { color: #9ca3af; }
 .dark .markdown-preview th { background: #1f2937; border-color: #374151; }
 .dark .markdown-preview td { border-color: #374151; }
+.dark .markdown-preview h6 { color: #9ca3af; }
+.dark .markdown-preview hr { border-top-color: #374151; }
 .dark .markdown-preview a { color: #818cf8; }
+.dark .markdown-preview a:hover { color: #a5b4fc; }
+.dark .markdown-preview del, .dark .markdown-preview s { color: #6b7280; }
 
 /* ===== Scrollbar ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
