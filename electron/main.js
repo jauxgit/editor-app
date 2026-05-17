@@ -5,24 +5,50 @@ import { readFile, writeFile, readdir, mkdir, copyFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'markedit',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+])
+
 const isDev = !app.isPackaged
+
+function getElectronDir() {
+  if (isDev) {
+    return dirname(fileURLToPath(import.meta.url))
+  }
+  return join(app.getAppPath(), 'electron')
+}
+
+function getDistDir() {
+  if (isDev) {
+    return join(dirname(fileURLToPath(import.meta.url)), '../dist')
+  }
+  return join(app.getAppPath(), 'dist')
+}
+
+const electronDir = getElectronDir()
+const distDir = getDistDir()
 
 // ===== 自定义协议：serve dist 文件，解决 file:// 下 ESM 的 CORS 问题 =====
 function registerCustomProtocol() {
   protocol.handle('markedit', async (request) => {
-    // markedit:// 的 host+pathname 组成完整文件路径
-    // 例如 markedit://index.html → host=index.html, pathname=/
-    // 例如 markedit://assets/foo.js → host=assets, pathname=/foo.js
     const url = new URL(request.url)
-    const distDir = join(__dirname, '../dist')
 
-    let reqPath = url.host + url.pathname
+    let reqPath = url.pathname
+    if (reqPath.startsWith('/')) reqPath = reqPath.slice(1)
     if (reqPath.endsWith('/')) reqPath = reqPath.slice(0, -1)
+
+    if (!reqPath) reqPath = 'index.html'
 
     const filePath = join(distDir, reqPath)
 
-    // 防止目录遍历
     if (!filePath.startsWith(distDir)) {
       return new Response('Forbidden', { status: 403 })
     }
@@ -72,7 +98,7 @@ function createWindow() {
     title: 'MarkEdit',
     titleBarStyle: 'hiddenInset',
     webPreferences: {
-      preload: join(__dirname, 'preload.cjs'),
+      preload: join(electronDir, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
@@ -82,7 +108,7 @@ function createWindow() {
   if (isDev) {
     win.loadURL('http://localhost:5173')
   } else {
-    win.loadURL('markedit://index.html')
+    win.loadURL('markedit:///index.html')
   }
 
   Menu.setApplicationMenu(null)
