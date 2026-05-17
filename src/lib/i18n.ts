@@ -85,6 +85,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.night-owl': 'Night Owl',
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
+
+    // TOC / Outline
+    'toc.title': 'Outline',
   },
   zh: {
     'menu.file': '文件',
@@ -157,6 +160,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.night-owl': 'Night Owl',
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
+
+    // TOC / Outline
+    'toc.title': '目录',
   },
 }
 
