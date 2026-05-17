@@ -1,6 +1,8 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useInsertionEffect } from 'react'
 import { renderMarkdown } from '../../lib/markdown'
 import { useEditorStore } from '../../stores/editorStore'
+import { applyHighlightTheme } from '../../lib/highlightThemes'
+import { useT } from '../../lib/i18n'
 
 interface Props {
   content: string
@@ -9,18 +11,50 @@ interface Props {
   onScrollChange?: (ratio: number) => void
 }
 
+interface TocItem {
+  id: string
+  text: string
+  level: number
+}
+
+function extractToc(html: string): TocItem[] {
+  const items: TocItem[] = []
+  const re = /<h([1-3])\s[^>]*?id="([^"]*)"[^>]*>(.*?)<\/h\1>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    items.push({
+      level: parseInt(m[1], 10),
+      id: m[2],
+      text: m[3].replace(/<[^>]*>/g, ''),
+    })
+  }
+  return items
+}
+
 export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props) {
   const html = useMemo(() => renderMarkdown(content), [content])
+  const tocItems = useMemo(() => extractToc(html), [html])
   const theme = useEditorStore(s => s.theme)
+  const highlightTheme = useEditorStore(s => s.highlightTheme)
   const ref = useRef<HTMLDivElement>(null)
+  const isSyncing = useRef(false)
+  const [tocOpen, setTocOpen] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const t = useT()
 
-  // 同步滚动位置
+  useInsertionEffect(() => {
+    applyHighlightTheme(highlightTheme)
+  }, [highlightTheme])
+
+  // 同步滚动位置（来自编辑器）
   useEffect(() => {
     if (!ref.current || scrollRatio === undefined) return
     const el = ref.current
     const max = el.scrollHeight - el.clientHeight
     if (max > 0) {
+      isSyncing.current = true
       el.scrollTop = scrollRatio * max
+      requestAnimationFrame(() => { isSyncing.current = false })
     }
   }, [scrollRatio])
 
@@ -29,6 +63,7 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     const el = ref.current
     if (!el || !onScrollChange) return
     const handler = () => {
+      if (isSyncing.current) return
       const max = el.scrollHeight - el.clientHeight
       if (max > 0) onScrollChange(el.scrollTop / max)
     }
@@ -36,15 +71,75 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     return () => el.removeEventListener('scroll', handler)
   }, [onScrollChange])
 
+  // Scroll-spy：IntersectionObserver 高亮当前标题
+  useEffect(() => {
+    if (!ref.current || tocItems.length === 0) return
+    const headings = ref.current.querySelectorAll('h1[id], h2[id], h3[id]')
+    if (headings.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id)
+            break
+          }
+        }
+      },
+      { rootMargin: '-20% 0px -70% 0px' }
+    )
+    headings.forEach(h => observer.observe(h))
+    return () => observer.disconnect()
+  }, [html, tocItems])
+
+  // 点击跳转至标题
+  const handleTocClick = (e: React.MouseEvent, id: string) => {
+    e.preventDefault()
+    const el = ref.current?.querySelector(`#${CSS.escape(id)}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+      setActiveId(id)
+    }
+  }
+
   const isDark = theme === 'dark'
   const bg = isDark ? 'bg-gray-900' : 'bg-white'
   const text = isDark ? 'text-gray-200' : 'text-gray-900'
 
   return (
-    <div
-      ref={ref}
-      className={`markdown-preview ${bg} ${text}`}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className={`relative h-full ${bg} ${text}`}>
+      {/* TOC 浮动面板 — 在滚动容器外部，保持固定 */}
+      {tocItems.length > 0 && (
+        <div className="toc-panel">
+          <button
+            className={`toc-toggle ${bg}`}
+            onClick={() => setTocOpen(o => !o)}
+            title={t('toc.title')}
+          >
+            {tocOpen ? '✕' : '☰'}
+          </button>
+          {tocOpen && (
+            <nav className={`toc-nav ${bg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              {tocItems.map(item => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className={`toc-link toc-level-${item.level} ${activeId === item.id ? 'toc-active' : ''}`}
+                  onClick={(e) => handleTocClick(e, item.id)}
+                >
+                  {item.text}
+                </a>
+              ))}
+            </nav>
+          )}
+        </div>
+      )}
+
+      <div
+        ref={ref}
+        className="markdown-preview h-full"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
   )
 }

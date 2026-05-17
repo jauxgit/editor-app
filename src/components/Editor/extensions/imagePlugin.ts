@@ -1,5 +1,4 @@
 import { ViewPlugin, Decoration, WidgetType, type DecorationSet, type EditorView } from '@codemirror/view'
-import { type RangeSetBuilder } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 
 /**

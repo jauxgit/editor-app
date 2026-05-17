@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
+import { useT } from '../../lib/i18n'
 import type { FileEntry } from '../../types/electron'
 
 interface TreeNodeProps {
@@ -85,6 +86,7 @@ export function FileTree() {
   const openFile = useWorkspaceStore(s => s.openFile)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
   const theme = useEditorStore(s => s.theme)
+  const t = useT()
 
   // 加载根目录
   useEffect(() => {
@@ -141,7 +143,7 @@ export function FileTree() {
       {/* 标题栏 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/30 select-none">
         <span className="font-semibold text-xs uppercase tracking-wider opacity-60">
-          Files
+          {t('fileTree.title')}
         </span>
       </div>
 
@@ -149,7 +151,7 @@ export function FileTree() {
       <div className="flex-1 overflow-y-auto py-1">
         {entries.length === 0 && (
           <div className="px-4 py-8 text-center opacity-40 text-xs">
-            {root ? 'Empty folder' : 'Open a folder to start'}
+            {root ? t('fileTree.empty') : t('fileTree.hint')}
           </div>
         )}
         {entries.map(entry => (

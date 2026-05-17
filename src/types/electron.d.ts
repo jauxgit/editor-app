@@ -12,6 +12,7 @@ export interface ElectronAPI {
   openFolderDialog: () => Promise<{ path: string } | null>
   listDir: (dirPath: string) => Promise<FileEntry[]>
   ensureDir: (dirPath: string) => Promise<void>
+  showConfirmDialog: (message: string, title: string) => Promise<boolean>
   copyImage: (sourcePath: string, workspaceRoot: string) => Promise<{
     success: boolean
     relativePath: string
@@ -28,6 +29,7 @@ export interface ElectronAPI {
   onFolderOpened: (cb: (data: { path: string }) => void) => void
   onMenuSave: (cb: () => void) => void
   getAppPath: () => Promise<string>
+  setLanguage: (lang: string) => void
 }
 
 declare global {

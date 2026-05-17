@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
+import { useT } from '../../lib/i18n'
 import { FileTree } from '../FileTree/FileTree'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
@@ -9,6 +10,10 @@ import { CommandPalette, useRegisterCommands } from './CommandPalette'
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined)
+  const t = useT()
+  const tRef = useRef(t)
+  tRef.current = t
+  const [isDragOver, setIsDragOver] = useState(false)
   const tabs = useWorkspaceStore(s => s.openTabs)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
   const setActiveTab = useWorkspaceStore(s => s.setActiveTab)
@@ -44,16 +49,12 @@ export function AppLayout() {
       setPaletteOpen(o => !o)
       return
     }
-    // Cmd+O → 打开文件
+    // Cmd+O → 打开文件（不影响文件树，仅新增标签页）
     if (mod && !e.shiftKey && e.key.toLowerCase() === 'o') {
       e.preventDefault()
       if (window.electronAPI) {
         window.electronAPI.openFileDialog().then(result => {
-          if (result) {
-            const dir = result.path.replace(/[/\\][^/\\]+$/, '')
-            setRoot(dir)
-            openFile(result.path, result.content)
-          }
+          if (result) openFile(result.path, result.content)
         })
       }
       return
@@ -75,19 +76,128 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // 拖拽文件/文件夹到窗口
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+
+    let dragLeaveTimer: ReturnType<typeof setTimeout> | null = null
+
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      if (dragLeaveTimer) clearTimeout(dragLeaveTimer)
+      setIsDragOver(true)
+    }
+
+    const onDragLeave = (e: DragEvent) => {
+      // 只在真正离开 document 时隐藏提示
+      if (e.relatedTarget === null || e.relatedTarget === document) {
+        dragLeaveTimer = setTimeout(() => setIsDragOver(false), 100)
+      }
+    }
+
+    const onDrop = async (e: DragEvent) => {
+      e.preventDefault()
+      setIsDragOver(false)
+      if (dragLeaveTimer) clearTimeout(dragLeaveTimer)
+
+      const items = e.dataTransfer?.items
+      if (!items) return
+
+      const filePaths: string[] = []
+      const dirPaths: string[] = []
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.kind !== 'file') continue
+        const entry = item.webkitGetAsEntry()
+        if (!entry) continue
+
+        if (entry.isFile) {
+          const file = item.getAsFile()
+          if (file) {
+            const p = (file as unknown as { path: string }).path
+            if (p) filePaths.push(p)
+          }
+        } else if (entry.isDirectory) {
+          // 从子文件路径推断目录路径
+          const dirName = entry.name
+          const files = e.dataTransfer?.files
+          if (files) {
+            for (let j = 0; j < files.length; j++) {
+              const fp = (files[j] as unknown as { path?: string }).path
+              if (fp) {
+                const sep = fp.includes('\\') ? '\\' : '/'
+                const needle = sep + dirName + sep
+                const idx = fp.indexOf(needle)
+                if (idx !== -1) {
+                  dirPaths.push(fp.substring(0, idx + dirName.length + 1).replace(/[\\/]$/, ''))
+                  break
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 检查拖放目标是否在编辑器区域内（图片由 ImageDropHandler 处理）
+      const editorEl = (e.target as HTMLElement)?.closest('.cm-editor')
+
+      // 处理文件
+      for (const p of filePaths) {
+        if (editorEl) {
+          const ext = p.split('.').pop()?.toLowerCase()
+          if (ext && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+            continue // 编辑器内的图片由 ImageDropHandler 处理
+          }
+        }
+        try {
+          const result = await api.readFile(p)
+          if (result) openFile(result.path, result.content)
+        } catch {
+          // 无法读取的文件跳过
+        }
+      }
+
+      // 处理文件夹
+      for (const dir of dirPaths) {
+        const msg = tRef.current('drag.trust.message', { folder: dir })
+        const title = tRef.current('drag.trust.title')
+        try {
+          const trusted = await api.showConfirmDialog(msg, title)
+          if (trusted) setRoot(dir)
+        } catch {
+          // 对话框被关闭或出错时跳过
+        }
+      }
+    }
+
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
+
+    return () => {
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
+      if (dragLeaveTimer) clearTimeout(dragLeaveTimer)
+    }
+  }, [openFile, setRoot])
+
   // 监听 Electron 事件
   useEffect(() => {
     if (!window.electronAPI) return
 
     window.electronAPI.onFileOpened(({ path, content }) => {
-      // 设置工作区 root 为文件所在目录
-      const dir = path.replace(/[/\\][^/\\]+$/, '')
-      setRoot(dir)
       openFile(path, content)
     })
 
-    window.electronAPI.onFolderOpened(({ path }) => {
-      setRoot(path)
+    window.electronAPI.onFolderOpened(async ({ path }) => {
+      const msg = tRef.current('drag.trust.message', { folder: path })
+      const title = tRef.current('drag.trust.title')
+      const trusted = await window.electronAPI!.showConfirmDialog(msg, title)
+      if (trusted) setRoot(path)
     })
 
     window.electronAPI.onMenuSave(() => {
@@ -103,9 +213,20 @@ export function AppLayout() {
   const textDim = theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
   const textColor = theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
 
+  const viewModeLabels: Record<string, string> = {
+    source: t('toolbar.source'),
+    preview: t('toolbar.preview'),
+    split: t('toolbar.split'),
+  }
+
+  const lineCount = activeTab?.content?.split('\n').length || 0
+
   return (
     <>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {isDragOver && (
+        <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-indigo-500 ring-inset drag-over-overlay" />
+      )}
       <div className={`h-full flex flex-col ${bg} ${textColor}`}>
         {/* ===== 工具栏 ===== */}
       <div className={`h-10 flex items-center px-3 gap-2 border-b ${borderColor} select-none shrink-0`}>
@@ -113,7 +234,7 @@ export function AppLayout() {
         <button
           onClick={toggleFileTree}
           className={`px-2 py-1 text-xs rounded ${textDim} hover:bg-gray-700/20 transition-colors`}
-          title="Toggle File Tree"
+          title={t('toolbar.toggleFileTree')}
         >
           {showFileTree ? '◧' : '◨'}
         </button>
@@ -130,14 +251,14 @@ export function AppLayout() {
                   : `${textDim} hover:bg-gray-700/20`
               }`}
             >
-              {mode === 'source' ? 'Source' : mode === 'preview' ? 'Preview' : 'Split'}
+              {viewModeLabels[mode]}
             </button>
           ))}
         </div>
 
         {/* 工作区路径 */}
         <span className="text-xs opacity-40 ml-2 truncate">
-          {root || 'No folder open'}
+          {root || t('toolbar.noFolderOpen')}
         </span>
 
         <div className="ml-auto flex items-center gap-2">
@@ -196,7 +317,7 @@ export function AppLayout() {
               <>
                 {/* 源码编辑器 */}
                 {(viewMode === 'source' || viewMode === 'split') && (
-                  <div className={`flex-1 ${viewMode === 'split' ? 'border-r ' + borderColor : ''}`}>
+                  <div className={`flex-1 min-w-0 ${viewMode === 'split' ? 'border-r ' + borderColor : ''}`}>
                     <EditorWrapper
                       docPath={activeTabPath!}
                       onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
@@ -206,7 +327,7 @@ export function AppLayout() {
 
                 {/* 预览面板 */}
                 {(viewMode === 'preview' || viewMode === 'split') && (
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <MarkdownPreview
                       content={activeTab?.content || ''}
                       scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
@@ -219,7 +340,7 @@ export function AppLayout() {
               <div className="flex-1 flex items-center justify-center opacity-30 text-sm select-none">
                 <div className="text-center">
                   <div className="text-4xl mb-4">📝</div>
-                  <p>Cmd+O Open File &nbsp;|&nbsp; Cmd+Shift+O Open Folder</p>
+                  <p>{t('empty.hint')}</p>
                 </div>
               </div>
             )}
@@ -230,11 +351,11 @@ export function AppLayout() {
       {/* ===== 状态栏 ===== */}
       <div className={`h-7 flex items-center px-3 gap-4 text-xs ${tabBg} border-t ${borderColor} select-none shrink-0 ${textDim}`}>
         <span>
-          {activeTab ? `${activeTab?.content?.split('\n').length || 0} lines` : '—'}
+          {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
         </span>
-        <span>{viewMode}</span>
-        <span className="ml-auto">UTF-8</span>
-        <span>Markdown</span>
+        <span>{viewModeLabels[viewMode]}</span>
+        <span className="ml-auto">{t('status.utf8')}</span>
+        <span>{t('status.markdown')}</span>
       </div>
     </div>
     </>
