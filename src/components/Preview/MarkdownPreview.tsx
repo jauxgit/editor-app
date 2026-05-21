@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useInsertionEffect } from 'react'
-import { renderMarkdown } from '../../lib/markdown'
+import { renderMarkdownWithPlugins } from '../../lib/markdown'
+import { usePlugins } from '../../lib/pluginRegistry'
 import { useEditorStore } from '../../stores/editorStore'
 import { applyHighlightTheme } from '../../lib/highlightThemes'
 import { useT } from '../../lib/i18n'
@@ -32,7 +33,15 @@ function extractToc(html: string): TocItem[] {
 }
 
 export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props) {
-  const html = useMemo(() => renderMarkdown(content), [content])
+  const registry = usePlugins()
+
+  const html = useMemo(
+    () => renderMarkdownWithPlugins(content, {
+      remarkPlugins: registry.getRemarkPlugins(),
+      rehypePlugins: registry.getRehypePlugins(),
+    }),
+    [content, registry.version]
+  )
   const tocItems = useMemo(() => extractToc(html), [html])
   const theme = useEditorStore(s => s.theme)
   const highlightTheme = useEditorStore(s => s.highlightTheme)

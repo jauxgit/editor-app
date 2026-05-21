@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { commands, type Command } from '../../lib/commands'
+import { usePlugins } from '../../lib/pluginRegistry'
 import { useEditorStore } from '../../stores/editorStore'
 import { highlightThemes } from '../../lib/highlightThemes'
 import { useT } from '../../lib/i18n'
@@ -149,6 +150,7 @@ export function useRegisterCommands() {
   const setLanguage = useEditorStore(s => s.setLanguage)
   const language = useEditorStore(s => s.language)
   const t = useT()
+  const registry = usePlugins()
 
   useEffect(() => {
     commands.clear()
@@ -175,6 +177,8 @@ export function useRegisterCommands() {
       })),
       { id: 'language.en', label: `${t('cmd.category.language')}: ${t('language.en')}`, category: t('cmd.category.language'), action: () => setLanguage('en') },
       { id: 'language.zh', label: `${t('cmd.category.language')}: ${t('language.zh')}`, category: t('cmd.category.language'), action: () => setLanguage('zh') },
+      // 插件命令
+      ...registry.getAllCommands(),
     ])
-  }, [setViewMode, toggleFileTree, toggleTheme, setHighlightTheme, setLanguage, language, t])
+  }, [setViewMode, toggleFileTree, toggleTheme, setHighlightTheme, setLanguage, language, t, registry.version])
 }
