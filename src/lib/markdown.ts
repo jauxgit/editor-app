@@ -1,4 +1,4 @@
-import { unified } from 'unified'
+import { unified, type Plugin } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
@@ -7,7 +7,7 @@ import rehypeHighlight from 'rehype-highlight'
 import rehypeStringify from 'rehype-stringify'
 import { rehypeMarkExplicitLanguage, rehypeCodeLabels } from './rehype-code-labels'
 
-const processor = unified()
+const defaultProcessor = unified()
   .use(remarkParse)
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: false })
@@ -19,6 +19,31 @@ const processor = unified()
 
 /** Markdown → HTML（remark/rehype 管线，processSync） */
 export function renderMarkdown(md: string): string {
+  const result = defaultProcessor.processSync(md)
+  return String(result)
+}
+
+/** Markdown → HTML（接收动态插件） */
+export function renderMarkdownWithPlugins(
+  md: string,
+  options: {
+    remarkPlugins?: [Plugin, unknown?][]
+    rehypePlugins?: [Plugin, unknown?][]
+  }
+): string {
+  let processor = unified().use(remarkParse)
+
+  for (const [plugin, opts] of options.remarkPlugins ?? []) {
+    processor = processor.use(plugin, opts)
+  }
+
+  processor = processor.use(remarkRehype, { allowDangerousHtml: false })
+
+  for (const [plugin, opts] of options.rehypePlugins ?? []) {
+    processor = processor.use(plugin, opts)
+  }
+
+  processor = processor.use(rehypeStringify, { allowDangerousHtml: false })
   const result = processor.processSync(md)
   return String(result)
 }

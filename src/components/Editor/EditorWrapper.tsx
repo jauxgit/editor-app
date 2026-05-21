@@ -6,79 +6,21 @@ import {
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle, type Language, type LanguageSupport } from '@codemirror/language'
-import { javascript } from '@codemirror/lang-javascript'
-import { python } from '@codemirror/lang-python'
-import { json } from '@codemirror/lang-json'
-import { css } from '@codemirror/lang-css'
-import { html } from '@codemirror/lang-html'
-import { java } from '@codemirror/lang-java'
-import { cpp } from '@codemirror/lang-cpp'
-import { go } from '@codemirror/lang-go'
-import { rust } from '@codemirror/lang-rust'
-import { php } from '@codemirror/lang-php'
-import { sql } from '@codemirror/lang-sql'
-import { xml } from '@codemirror/lang-xml'
-import { yaml } from '@codemirror/lang-yaml'
+import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
-import { imageViewPlugin } from './extensions/imagePlugin'
-import { multiCursorKeymap } from './extensions/multiCursor'
 import { useImageHandler } from './ImageDropHandler'
+import { usePlugins, pluginRegistry } from '../../lib/pluginRegistry'
+import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin'
 
 interface Props {
   docPath: string
   onScrollChange?: (ratio: number) => void
 }
 
-/** 代码块语言映射 — 模块级单例，避免每次渲染重建 */
-const codeLanguages: Record<string, LanguageSupport> = {
-  javascript: javascript(),
-  js: javascript(),
-  jsx: javascript({ jsx: true }),
-  typescript: javascript({ typescript: true }),
-  ts: javascript({ typescript: true }),
-  tsx: javascript({ typescript: true, jsx: true }),
-  python: python(),
-  py: python(),
-  json: json(),
-  css: css(),
-  html: html(),
-  // 新增语言
-  java: java(),
-  cpp: cpp(),
-  c: cpp(),
-  'c++': cpp(),
-  go: go(),
-  rust: rust(),
-  php: php(),
-  sql: sql(),
-  xml: xml(),
-  yaml: yaml(),
-  toml: yaml(),
-  // 无专属解析器的语言 — 用近亲代替
-  csharp: java(),
-  'c#': java(),
-  kotlin: java(),
-  scala: java(),
-  swift: java(),
-  bash: javascript(),
-  sh: javascript(),
-}
-
-function getCodeParser(info: string): Language | null {
-  const lang = codeLanguages[info]
-  return lang?.language ?? null
-}
-
-
-/**
- * CodeMirror 6 编辑器 React 包装器
- * 每个 Tab 持有一个独立的 EditorView 实例
- */
 export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -87,6 +29,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const root = useWorkspaceStore(s => s.root)
   const tab = useWorkspaceStore(s => s.openTabs.find(t => t.path === docPath))
   const theme = useEditorStore(s => s.theme)
+  const registry = usePlugins()
 
   // 在光标位置插入文本
   const onInsertAtCursor = useCallback((text: string) => {
@@ -100,6 +43,15 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
 
   // 图片拖入/粘贴处理
   useImageHandler({ docPath, containerRef: editorRef, onInsertAtCursor })
+
+  // 动态注册/更新图片内联渲染插件（依赖 workspace root）
+  useEffect(() => {
+    const id = 'core.image-render'
+    if (registry.has(id)) {
+      registry.unregister(id)
+    }
+    registry.register(imageInlinePlugin(root))
+  }, [root])
 
   // 初始化 CodeMirror
   useEffect(() => {
@@ -128,13 +80,12 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
         ...closeBracketsKeymap,
         indentWithTab,
       ]),
-      multiCursorKeymap,
       markdown({
         base: markdownLanguage,
-        codeLanguages: getCodeParser,
+        codeLanguages: registry.getCodeParser(),
       }),
-      // 图片内联渲染插件
-      imageViewPlugin(root),
+      // 从插件注册表收集扩展
+      ...registry.getAllExtensions(),
       ...(theme === 'dark' ? [oneDark] : []),
       EditorView.updateListener.of(update => {
         if (update.docChanged) {
@@ -160,7 +111,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       view.destroy()
       viewRef.current = null
     }
-  }, [docPath, theme])
+  }, [docPath, theme, registry.version])
 
   // 同步外部内容变更到编辑器
   useEffect(() => {
