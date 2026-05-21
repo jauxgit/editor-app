@@ -7,13 +7,14 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
+import { searchKeymap, openSearchPanel, highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { useImageHandler } from './ImageDropHandler'
 import { usePlugins, pluginRegistry } from '../../lib/pluginRegistry'
+import { setActiveEditorView } from '../../lib/commands'
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin'
 
 interface Props {
@@ -61,6 +62,9 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       viewRef.current.destroy()
     }
 
+    // 检测文件扩展名，代码文件使用对应语言高亮，否则按 Markdown 处理
+    const fileLang = registry.getFileLanguage(docPath)
+
     const extensions = [
       lineNumbers(),
       EditorView.lineWrapping,
@@ -77,13 +81,16 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
+        { key: "Mod-h", run: openSearchPanel },
         ...closeBracketsKeymap,
         indentWithTab,
       ]),
-      markdown({
-        base: markdownLanguage,
-        codeLanguages: registry.getCodeParser(),
-      }),
+      // 代码文件 → 使用对应语言的全文高亮；Markdown/其他 → 使用 Markdown + 代码块高亮
+      fileLang ??
+        markdown({
+          base: markdownLanguage,
+          codeLanguages: registry.getCodeParser(),
+        }),
       // 从插件注册表收集扩展
       ...registry.getAllExtensions(),
       ...(theme === 'dark' ? [oneDark] : []),
@@ -106,8 +113,10 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     })
 
     viewRef.current = view
+    setActiveEditorView(view)
 
     return () => {
+      setActiveEditorView(null)
       view.destroy()
       viewRef.current = null
     }

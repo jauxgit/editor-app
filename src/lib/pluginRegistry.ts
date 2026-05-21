@@ -19,6 +19,9 @@ export interface MarkEditPlugin {
   /** 代码块语言支持 */
   codeLanguages?: Record<string, LanguageSupport>
 
+  /** 文件扩展名 → 全文件语言支持（如 .java → java()） */
+  fileExtensions?: Record<string, LanguageSupport>
+
   /** remark/rehype 管线插件 */
   remarkPlugins?: [Plugin, unknown?][]
   rehypePlugins?: [Plugin, unknown?][]
@@ -125,6 +128,24 @@ class PluginRegistry {
       const lang = langs[info]
       return lang?.language ?? null
     }
+  }
+
+  /** 合并所有激活插件的 fileExtensions（后者覆盖前者） */
+  getFileExtensions(): Record<string, LanguageSupport> {
+    const result: Record<string, LanguageSupport> = {}
+    for (const id of this.activeIds) {
+      const p = this.plugins.get(id)
+      if (p?.fileExtensions) Object.assign(result, p.fileExtensions)
+    }
+    return result
+  }
+
+  /** 根据文件路径查找对应的全文件 LanguageSupport，无匹配返回 null */
+  getFileLanguage(path: string): LanguageSupport | null {
+    const ext = '.' + path.split('.').pop()?.toLowerCase()
+    if (!ext || ext === '.') return null
+    const map = this.getFileExtensions()
+    return map[ext] ?? null
   }
 
   /** 收集所有激活插件的 remark 插件 */

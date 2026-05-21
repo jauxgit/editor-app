@@ -42,3 +42,14 @@ class CommandRegistry {
 
 /** 全局命令注册表单例 */
 export const commands = new CommandRegistry()
+
+/** 当前活跃的 CM6 EditorView 引用（供菜单栏等外部调用 CM6 命令） */
+let activeEditorView: import('@codemirror/view').EditorView | null = null
+
+export function setActiveEditorView(view: import('@codemirror/view').EditorView | null) {
+  activeEditorView = view
+}
+
+export function getActiveEditorView(): import('@codemirror/view').EditorView | null {
+  return activeEditorView
+}

@@ -6,6 +6,7 @@ import { FileTree } from '../FileTree/FileTree'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
+import { MenuBar } from './MenuBar'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -228,6 +229,9 @@ export function AppLayout() {
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-indigo-500 ring-inset drag-over-overlay" />
       )}
       <div className={`h-full flex flex-col ${bg} ${textColor}`}>
+        {/* ===== 菜单栏 ===== */}
+        <MenuBar onOpenPalette={() => setPaletteOpen(true)} />
+
         {/* ===== 工具栏 ===== */}
       <div className={`h-10 flex items-center px-3 gap-2 border-b ${borderColor} select-none shrink-0`}>
         {/* 切换文件树 */}
