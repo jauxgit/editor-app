@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
+import { createNewFile } from '../../lib/commands'
 import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { FileTree } from '../FileTree/FileTree'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
+import { MenuBar } from './MenuBar'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -66,6 +68,20 @@ export function AppLayout() {
         window.electronAPI.openFolderDialog().then(result => {
           if (result) setRoot(result.path)
         })
+      }
+      return
+    }
+    // Cmd+N → 新建文件
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault()
+      const store = useWorkspaceStore.getState()
+      if (store.root) {
+        createNewFile(store.root).then(path => {
+          if (path) { store.openFile(path, ''); store.triggerRefresh() }
+        })
+      } else {
+        const id = nextUntitledId()
+        store.openUntitled(id)
       }
       return
     }
@@ -228,6 +244,9 @@ export function AppLayout() {
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-indigo-500 ring-inset drag-over-overlay" />
       )}
       <div className={`h-full flex flex-col ${bg} ${textColor}`}>
+        {/* ===== 菜单栏 ===== */}
+        <MenuBar onOpenPalette={() => setPaletteOpen(true)} />
+
         {/* ===== 工具栏 ===== */}
       <div className={`h-10 flex items-center px-3 gap-2 border-b ${borderColor} select-none shrink-0`}>
         {/* 切换文件树 */}

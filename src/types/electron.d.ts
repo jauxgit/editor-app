@@ -7,7 +7,8 @@ export interface FileEntry {
 export interface ElectronAPI {
   readFile: (filePath: string) => Promise<{ path: string; content: string }>
   writeFile: (filePath: string, content: string) => Promise<boolean>
-  saveDialog: () => Promise<string | null>
+  saveDialog: (defaultPath?: string) => Promise<string | null>
+  rename: (oldPath: string, newPath: string) => Promise<boolean>
   openFileDialog: () => Promise<{ path: string; content: string } | null>
   openFolderDialog: () => Promise<{ path: string } | null>
   listDir: (dirPath: string) => Promise<FileEntry[]>
