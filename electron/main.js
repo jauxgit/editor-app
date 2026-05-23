@@ -130,7 +130,8 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 500,
-    title: 'MarkEdit',
+    title: 'MarkEdit · 码记',
+    icon: join(electronDir, '..', 'build', 'icon.png'),
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: join(electronDir, 'preload.cjs'),
