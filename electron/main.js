@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readFile, writeFile, readdir, mkdir, copyFile } from 'node:fs/promises'
+import { readFile, writeFile, readdir, mkdir, copyFile, rename } from 'node:fs/promises'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
@@ -216,10 +216,11 @@ ipcMain.handle('file:write', async (_e, filePath, content) => {
   return true
 })
 
-ipcMain.handle('file:saveDialog', async () => {
+ipcMain.handle('file:saveDialog', async (_e, defaultPath) => {
   const win = BrowserWindow.getFocusedWindow()
   if (!win) return null
   const result = await dialog.showSaveDialog(win, {
+    defaultPath,
     filters: [
       { name: 'Markdown', extensions: ['md'] },
       { name: 'All Files', extensions: ['*'] },
@@ -227,6 +228,15 @@ ipcMain.handle('file:saveDialog', async () => {
   })
   if (result.canceled) return null
   return result.filePath
+})
+
+ipcMain.handle('file:rename', async (_e, oldPath, newPath) => {
+  try {
+    await rename(oldPath, newPath)
+    return true
+  } catch {
+    return false
+  }
 })
 
 ipcMain.handle('dir:list', async (_e, dirPath) => {

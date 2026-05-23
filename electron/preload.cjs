@@ -4,7 +4,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 文件操作 =====
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
-  saveDialog: () => ipcRenderer.invoke('file:saveDialog'),
+  saveDialog: (defaultPath) => ipcRenderer.invoke('file:saveDialog', defaultPath),
+  rename: (oldPath, newPath) => ipcRenderer.invoke('file:rename', oldPath, newPath),
   openFileDialog: () => ipcRenderer.invoke('dialog:openFile'),
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
 

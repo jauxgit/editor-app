@@ -8,6 +8,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.file': 'File',
     'menu.edit': 'Edit',
     'menu.view': 'View',
+    'menu.newFile': 'New File',
     'menu.openFile': 'Open File...',
     'menu.openFolder': 'Open Folder...',
     'menu.save': 'Save',
@@ -60,6 +61,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.title': 'Files',
     'fileTree.empty': 'Empty folder',
     'fileTree.hint': 'Open a folder to start',
+    'fileTree.addFile': 'New File',
 
     // Command palette
     'cmdPalette.placeholder': 'Type a command...',
@@ -74,6 +76,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.split': 'View: Split Mode',
     'cmd.view.toggleFileTree': 'View: Toggle File Tree',
     'cmd.view.toggleTheme': 'View: Toggle Dark/Light Theme',
+    'cmd.file.new': 'File: New File',
     'cmd.file.open': 'File: Open File',
     'cmd.file.openFolder': 'File: Open Folder',
     'cmd.file.save': 'File: Save',
@@ -109,6 +112,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.file': '文件',
     'menu.edit': '编辑',
     'menu.view': '查看',
+    'menu.newFile': '新建文件',
     'menu.openFile': '打开文件...',
     'menu.openFolder': '打开文件夹...',
     'menu.save': '保存',
@@ -156,6 +160,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.title': '文件',
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
+    'fileTree.addFile': '新建文件',
 
     'cmdPalette.placeholder': '输入命令...',
     'cmdPalette.noResults': '无匹配命令',
@@ -168,6 +173,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.split': '视图: 分屏模式',
     'cmd.view.toggleFileTree': '视图: 切换文件树',
     'cmd.view.toggleTheme': '视图: 切换明暗主题',
+    'cmd.file.new': '文件: 新建文件',
     'cmd.file.open': '文件: 打开文件',
     'cmd.file.openFolder': '文件: 打开文件夹',
     'cmd.file.save': '文件: 保存',

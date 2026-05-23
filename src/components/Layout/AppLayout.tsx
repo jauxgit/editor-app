@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
+import { createNewFile } from '../../lib/commands'
 import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { FileTree } from '../FileTree/FileTree'
@@ -67,6 +68,20 @@ export function AppLayout() {
         window.electronAPI.openFolderDialog().then(result => {
           if (result) setRoot(result.path)
         })
+      }
+      return
+    }
+    // Cmd+N → 新建文件
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault()
+      const store = useWorkspaceStore.getState()
+      if (store.root) {
+        createNewFile(store.root).then(path => {
+          if (path) { store.openFile(path, ''); store.triggerRefresh() }
+        })
+      } else {
+        const id = nextUntitledId()
+        store.openUntitled(id)
       }
       return
     }

@@ -4,6 +4,8 @@ import { usePlugins } from '../../lib/pluginRegistry'
 import { useEditorStore } from '../../stores/editorStore'
 import { highlightThemes } from '../../lib/highlightThemes'
 import { useT } from '../../lib/i18n'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
+import { createNewFile } from '../../lib/commands'
 
 interface Props {
   isOpen: boolean
@@ -151,10 +153,21 @@ export function useRegisterCommands() {
   const language = useEditorStore(s => s.language)
   const t = useT()
   const registry = usePlugins()
+  const root = useWorkspaceStore(s => s.root)
+  const openFile = useWorkspaceStore(s => s.openFile)
 
   useEffect(() => {
     commands.clear()
     commands.registerAll([
+      { id: 'file.new', label: t('cmd.file.new'), category: t('cmd.category.file'), action: async () => {
+        const store = useWorkspaceStore.getState()
+        if (store.root) {
+          const path = await createNewFile(store.root)
+          if (path) { store.openFile(path, ''); store.triggerRefresh() }
+        } else {
+          store.openUntitled(nextUntitledId())
+        }
+      }},
       { id: 'view.source', label: t('cmd.view.source'), category: t('cmd.category.view'), action: () => setViewMode('source') },
       { id: 'view.preview', label: t('cmd.view.preview'), category: t('cmd.category.view'), action: () => setViewMode('preview') },
       { id: 'view.split', label: t('cmd.view.split'), category: t('cmd.category.view'), action: () => setViewMode('split') },

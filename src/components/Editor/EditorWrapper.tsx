@@ -133,35 +133,62 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     }
   }, [tab?.content])
 
+  // ===== 保存逻辑（处理 untitled 标签 + 保存对话框） =====
+  const saveCurrentFile = useCallback(async () => {
+    if (!viewRef.current || !tab || !window.electronAPI) return false
+    const content = viewRef.current.state.doc.toString()
+    const store = useWorkspaceStore.getState()
+
+    // 先更新内容到 store
+    store.updateContent(docPath, content)
+
+    const currentTab = store.openTabs.find(t => t.path === docPath)
+
+    // untitled 文件 → 弹出保存对话框
+    if (currentTab?.isUntitled) {
+      const defaultDir = store.root || undefined
+      const savePath = await window.electronAPI.saveDialog(defaultDir)
+      if (!savePath) return false
+
+      await window.electronAPI.writeFile(savePath, content)
+      const newName = savePath.split(/[/\\]/).pop() || savePath
+      store.updateTabPath(docPath, savePath)
+      store.markClean(savePath)
+
+      // 如果没有打开过文件夹，设 root 为保存位置的父目录
+      if (!store.root) {
+        const parentDir = savePath.substring(0, Math.max(savePath.lastIndexOf('/'), savePath.lastIndexOf('\\')))
+        store.setRoot(parentDir)
+      }
+      store.triggerRefresh()
+      return true
+    }
+
+    // 普通文件直接保存
+    await window.electronAPI.writeFile(docPath, content)
+    store.markClean(docPath)
+    return true
+  }, [docPath, tab])
+
   // 注册 Electron 菜单保存事件
   useEffect(() => {
     if (!window.electronAPI || !tab) return
     window.electronAPI.onMenuSave(() => {
-      if (viewRef.current) {
-        const content = viewRef.current.state.doc.toString()
-        updateContent(docPath, content)
-        window.electronAPI!.writeFile(docPath, content).then(() => markClean(docPath))
-      }
+      saveCurrentFile()
     })
-  }, [docPath, tab, updateContent, markClean])
+  }, [docPath, tab, saveCurrentFile])
 
   // Ctrl+S 保存
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        if (viewRef.current && tab) {
-          const content = viewRef.current.state.doc.toString()
-          updateContent(docPath, content)
-          if (window.electronAPI) {
-            window.electronAPI.writeFile(docPath, content).then(() => markClean(docPath))
-          }
-        }
+        saveCurrentFile()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [docPath, tab, updateContent, markClean])
+  }, [docPath, tab, saveCurrentFile])
 
   // 滚动位置同步
   useEffect(() => {

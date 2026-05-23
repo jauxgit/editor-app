@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { undo, redo } from '@codemirror/commands'
 import { openSearchPanel } from '@codemirror/search'
 import { useT } from '../../lib/i18n'
-import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
-import { getActiveEditorView } from '../../lib/commands'
+import { getActiveEditorView, createNewFile } from '../../lib/commands'
 
 interface MenuItem {
   id: string
@@ -33,6 +33,7 @@ export function MenuBar({ onOpenPalette }: Props) {
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const root = useWorkspaceStore(s => s.root)
   const closeTab = useWorkspaceStore(s => s.closeTab)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
   const openFile = useWorkspaceStore(s => s.openFile)
@@ -64,6 +65,22 @@ export function MenuBar({ onOpenPalette }: Props) {
       window.electronAPI.openFolderDialog().then(result => {
         if (result) setRoot(result.path)
       })
+    }
+  }
+
+  const newFile = async () => {
+    const store = useWorkspaceStore.getState()
+    if (store.root) {
+      // 已打开文件夹 → 直接在根目录创建文件
+      const path = await createNewFile(store.root)
+      if (path) {
+        store.openFile(path, '')
+        store.triggerRefresh()
+      }
+    } else {
+      // 未打开文件夹 → 创建临时 untitled 标签
+      const id = nextUntitledId()
+      store.openUntitled(id)
     }
   }
 
@@ -125,6 +142,8 @@ export function MenuBar({ onOpenPalette }: Props) {
       id: 'file',
       label: t('menu.file'),
       items: [
+        { id: 'new-file', label: t('menu.newFile'), shortcut: 'Ctrl+N', action: newFile },
+        { id: 'sep0', divider: true },
         { id: 'open-file', label: t('menu.openFile'), shortcut: 'Ctrl+O', action: openFileDialog },
         { id: 'open-folder', label: t('menu.openFolder'), shortcut: 'Ctrl+Shift+O', action: openFolderDialog },
         { id: 'save', label: t('menu.save'), shortcut: 'Ctrl+S', action: saveFile },

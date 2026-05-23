@@ -5,25 +5,38 @@ export interface TabInfo {
   name: string
   content: string
   isDirty: boolean
+  isUntitled?: boolean
 }
 
 interface WorkspaceState {
   root: string | null
   openTabs: TabInfo[]
   activeTabPath: string | null
+  refreshSignal: number
 
   setRoot: (root: string) => void
   openFile: (path: string, content: string) => void
+  openUntitled: (path: string) => void
   closeTab: (path: string) => void
   setActiveTab: (path: string) => void
   updateContent: (path: string, content: string) => void
   markClean: (path: string) => void
+  updateTabPath: (oldPath: string, newPath: string) => void
+  triggerRefresh: () => void
+}
+
+let untitledSeq = 0
+
+export function nextUntitledId(): string {
+  untitledSeq++
+  return `untitled-${untitledSeq}`
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   root: null,
   openTabs: [],
   activeTabPath: null,
+  refreshSignal: 0,
 
   setRoot: (root) => set({ root }),
 
@@ -69,4 +82,32 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
     })
   },
+
+  openUntitled: (path) => {
+    const tabs = get().openTabs
+    const existing = tabs.find(t => t.path === path)
+    if (existing) {
+      set({ activeTabPath: path })
+      return
+    }
+    set({
+      openTabs: [...tabs, { path, name: path, content: '', isDirty: true, isUntitled: true }],
+      activeTabPath: path,
+    })
+  },
+
+  updateTabPath: (oldPath, newPath) => {
+    const state = get()
+    const tab = state.openTabs.find(t => t.path === oldPath)
+    if (!tab) return
+    const name = newPath.split(/[/\\]/).pop() || newPath
+    set({
+      openTabs: state.openTabs.map(t =>
+        t.path === oldPath ? { ...t, path: newPath, name, isUntitled: false } : t
+      ),
+      activeTabPath: state.activeTabPath === oldPath ? newPath : state.activeTabPath,
+    })
+  },
+
+  triggerRefresh: () => set({ refreshSignal: get().refreshSignal + 1 }),
 }))
