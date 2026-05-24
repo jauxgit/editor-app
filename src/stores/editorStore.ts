@@ -11,12 +11,16 @@ interface EditorState {
   showFileTree: boolean
   highlightTheme: HighlightThemeId
   language: Lang
+  lastFilePath: string | null
+  lastRootPath: string | null
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
   toggleTheme: () => void
   setHighlightTheme: (t: HighlightThemeId) => void
   setLanguage: (lang: Lang) => void
+  setLastFilePath: (path: string | null) => void
+  setLastRootPath: (path: string | null) => void
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -27,6 +31,8 @@ export const useEditorStore = create<EditorState>()(
       showFileTree: true,
       highlightTheme: 'github-dark',
       language: 'en',
+      lastFilePath: null,
+      lastRootPath: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
@@ -38,6 +44,8 @@ export const useEditorStore = create<EditorState>()(
           window.electronAPI.setLanguage(lang)
         }
       },
+      setLastFilePath: (path) => set({ lastFilePath: path }),
+      setLastRootPath: (path) => set({ lastRootPath: path }),
     }),
     {
       name: 'markedit-settings',
@@ -46,6 +54,8 @@ export const useEditorStore = create<EditorState>()(
         highlightTheme: state.highlightTheme,
         language: state.language,
         showFileTree: state.showFileTree,
+        lastFilePath: state.lastFilePath,
+        lastRootPath: state.lastRootPath,
       }),
     }
   )
