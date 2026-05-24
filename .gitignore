@@ -13,6 +13,9 @@ dist
 dist-ssr
 *.local
 .claude
+.trae
+.vscode
+.staging
 
 # Editor directories and files
 .vscode/*
