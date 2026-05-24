@@ -37,6 +37,28 @@ export function AppLayout() {
   // 注册命令面板命令
   useRegisterCommands()
 
+  // 启动时恢复左侧目录 + 最近打开的文件
+  useEffect(() => {
+    const store = useEditorStore.getState()
+    const ws = useWorkspaceStore.getState()
+
+    // 先恢复左侧文件树目录
+    if (store.lastRootPath) {
+      ws.setRoot(store.lastRootPath)
+    }
+
+    // 再恢复最近打开的文件
+    const lastPath = store.lastFilePath
+    if (lastPath && window.electronAPI) {
+      window.electronAPI.readFile(lastPath).then(({ content }) => {
+        ws.openFile(lastPath, content)
+      }).catch(() => {
+        // 文件已被删除，清除记录
+        useEditorStore.getState().setLastFilePath(null)
+      })
+    }
+  }, [])
+
   // 主题 class 切换
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')

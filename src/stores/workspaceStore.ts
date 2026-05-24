@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useEditorStore } from './editorStore'
 
 export interface TabInfo {
   path: string
@@ -38,7 +39,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeTabPath: null,
   refreshSignal: 0,
 
-  setRoot: (root) => set({ root }),
+  setRoot: (root) => {
+    set({ root })
+    useEditorStore.getState().setLastRootPath(root)
+  },
 
   openFile: (path, content) => {
     const tabs = get().openTabs
@@ -52,6 +56,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       openTabs: [...tabs, { path, name, content, isDirty: false }],
       activeTabPath: path,
     })
+    // 记录最近打开的文件路径
+    useEditorStore.getState().setLastFilePath(path)
   },
 
   closeTab: (path) => {
