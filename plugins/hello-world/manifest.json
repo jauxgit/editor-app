@@ -1,0 +1,7 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "entry": "index.js",
+  "description": "示例插件：在命令面板添加一条打招呼命令"
+}

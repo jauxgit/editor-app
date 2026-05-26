@@ -16,6 +16,7 @@ dist-ssr
 .trae
 .vscode
 .staging
+.reasonix
 
 # Editor directories and files
 .vscode/*

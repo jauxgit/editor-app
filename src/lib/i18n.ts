@@ -29,6 +29,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.toggleTheme': 'Toggle Theme',
     'menu.commandPalette': 'Command Palette',
     'menu.help': 'Help',
+    'menu.pluginManager': 'Plugin Manager',
     'menu.about': 'About MarkEdit · 码记',
     'menu.toggleDevTools': 'Toggle DevTools',
     'menu.zoomIn': 'Zoom In',
@@ -80,6 +81,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.file.open': 'File: Open File',
     'cmd.file.openFolder': 'File: Open Folder',
     'cmd.file.save': 'File: Save',
+    'cmd.plugins.manager': 'Plugins: Manager',
 
     // Command categories
     'cmd.category.view': 'View',
@@ -103,6 +105,14 @@ const messages: Record<Lang, Record<string, string>> = {
 
     // TOC / Outline
     'toc.title': 'Outline',
+
+    // Plugin Manager
+    'plugin.title': 'Plugin Manager',
+    'plugin.noPlugins': 'No plugins found.',
+    'plugin.help': 'Place plugins in the plugins/ directory.',
+    'plugin.openDir': 'Open Plugin Directory',
+    'plugin.refresh': 'Refresh',
+    'plugin.pluginsCount': '{n} plugins, {m} active',
 
     // Drag and drop
     'drag.trust.title': 'Trust Folder',
@@ -133,6 +143,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.toggleTheme': '切换主题',
     'menu.commandPalette': '命令面板',
     'menu.help': '帮助',
+    'menu.pluginManager': '插件管理',
     'menu.about': '关于 MarkEdit · 码记',
     'menu.toggleDevTools': '开发者工具',
     'menu.zoomIn': '放大',
@@ -177,6 +188,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.file.open': '文件: 打开文件',
     'cmd.file.openFolder': '文件: 打开文件夹',
     'cmd.file.save': '文件: 保存',
+    'cmd.plugins.manager': '插件: 管理',
 
     'cmd.category.view': '视图',
     'cmd.category.file': '文件',
@@ -197,6 +209,14 @@ const messages: Record<Lang, Record<string, string>> = {
 
     // TOC / Outline
     'toc.title': '目录',
+
+    // Plugin Manager
+    'plugin.title': '插件管理',
+    'plugin.noPlugins': '未找到插件。',
+    'plugin.help': '将插件放在 plugins/ 目录下。',
+    'plugin.openDir': '打开插件目录',
+    'plugin.refresh': '重新扫描',
+    'plugin.pluginsCount': '{n} 个插件，{m} 个已启用',
 
     // Drag and drop
     'drag.trust.title': '信任文件夹',

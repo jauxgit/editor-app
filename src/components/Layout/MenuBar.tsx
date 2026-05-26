@@ -22,9 +22,10 @@ interface MenuGroup {
 
 interface Props {
   onOpenPalette: () => void
+  onOpenPluginManager: () => void
 }
 
-export function MenuBar({ onOpenPalette }: Props) {
+export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const t = useT()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -187,6 +188,8 @@ export function MenuBar({ onOpenPalette }: Props) {
       id: 'help',
       label: t('menu.help'),
       items: [
+        { id: 'plugin-manager', label: t('menu.pluginManager'), action: onOpenPluginManager },
+        { id: 'sep8', divider: true },
         { id: 'about', label: t('menu.about'), action: () => { /* TODO */ } },
       ],
     },

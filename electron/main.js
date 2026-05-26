@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol, shell } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readFile, writeFile, readdir, mkdir, copyFile, rename } from 'node:fs/promises'
@@ -70,8 +70,12 @@ function getDistDir() {
 
 const electronDir = getElectronDir()
 const distDir = getDistDir()
+// 插件目录：dev 时在项目根目录，打包后在 exe 同级目录
+const pluginsDir = isDev
+  ? join(dirname(dirname(fileURLToPath(import.meta.url))), 'plugins')
+  : join(dirname(process.execPath), 'plugins')
 
-// ===== 自定义协议：serve dist 文件，解决 file:// 下 ESM 的 CORS 问题 =====
+// ===== 自定义协议：serve dist 文件 + 插件文件 =====
 function registerCustomProtocol() {
   protocol.handle('markedit', async (request) => {
     const url = new URL(request.url)
@@ -80,8 +84,34 @@ function registerCustomProtocol() {
     if (reqPath.startsWith('/')) reqPath = reqPath.slice(1)
     if (reqPath.endsWith('/')) reqPath = reqPath.slice(0, -1)
 
-    if (!reqPath) reqPath = 'index.html'
+    // 插件路由：markedito://plugins/<plugin-id>/<path>
+    if (url.host === 'plugins') {
+      const parts = reqPath.split('/')
+      const pluginId = parts[0]
+      const pluginRelPath = parts.slice(1).join('/') || 'index.js'
+      const pluginFilePath = join(pluginsDir, pluginId, pluginRelPath)
 
+      // 路径安全检查
+      if (!pluginFilePath.startsWith(join(pluginsDir, pluginId))) {
+        return new Response('Forbidden', { status: 403 })
+      }
+
+      try {
+        await mkdir(pluginsDir, { recursive: true })
+        const data = await readFile(pluginFilePath)
+        const ext = extname(pluginFilePath).toLowerCase()
+        const mime = MIME_TYPES[ext] || 'application/octet-stream'
+        return new Response(data, {
+          status: 200,
+          headers: { 'Content-Type': mime, 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' },
+        })
+      } catch {
+        return new Response('Not Found', { status: 404 })
+      }
+    }
+
+    // 原有 dist 文件逻辑
+    if (!reqPath) reqPath = 'index.html'
     const filePath = join(distDir, reqPath)
 
     if (!filePath.startsWith(distDir)) {
@@ -348,6 +378,39 @@ ipcMain.handle('image:writeBase64', async (_e, workspaceRoot, base64Data, filena
 
 ipcMain.handle('app:getPath', async () => {
   return app.getPath('documents')
+})
+
+// ===== 插件系统 =====
+ipcMain.handle('plugins:scan', async () => {
+  await mkdir(pluginsDir, { recursive: true })
+  const results = []
+  try {
+    const entries = await readdir(pluginsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      try {
+        const manifestRaw = await readFile(join(pluginsDir, entry.name, 'manifest.json'), 'utf-8')
+        const manifest = JSON.parse(manifestRaw)
+        results.push({
+          id: manifest.id || entry.name,
+          name: manifest.name || entry.name,
+          version: manifest.version || '0.0.0',
+          entry: manifest.entry || 'index.js',
+          description: manifest.description || '',
+        })
+      } catch {
+        // 跳过无效插件
+      }
+    }
+  } catch {
+    // 目录不存在或无法读取
+  }
+  return results
+})
+
+ipcMain.handle('plugins:openDir', async () => {
+  await mkdir(pluginsDir, { recursive: true })
+  shell.openPath(pluginsDir)
 })
 
 // 确认对话框（用于文件夹信任提示）
