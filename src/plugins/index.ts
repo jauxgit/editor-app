@@ -4,10 +4,15 @@ import { codeLanguagesPlugin } from './builtin/codeLanguages'
 import { markdownPipelinePlugin } from './builtin/markdownPipeline'
 import { highlightThemePlugin } from './builtin/highlightThemes'
 
-/** 注册所有内置插件 */
+/** 注册所有内置插件 + 加载外置插件 */
 export function registerBuiltinPlugins() {
   pluginRegistry.register(multiCursorPlugin())
   pluginRegistry.register(codeLanguagesPlugin())
   pluginRegistry.register(markdownPipelinePlugin())
   pluginRegistry.register(highlightThemePlugin())
+
+  // 异步扫描外置插件
+  pluginRegistry.scanExternal().catch(e =>
+    console.error('[plugin] scanExternal failed:', e)
+  )
 }

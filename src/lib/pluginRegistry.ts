@@ -173,6 +173,30 @@ class PluginRegistry {
     this.listeners.add(fn)
     return () => { this.listeners.delete(fn) }
   }
+
+  /** 扫描并加载外置插件（动态 import ESM 模块） */
+  async scanExternal() {
+    if (!window.electronAPI) return
+    const manifests = await window.electronAPI.scanPlugins()
+    for (const m of manifests) {
+      if (this.has(m.id)) continue // 不覆盖已有插件（含内置）
+      try {
+        // 使用完整协议 URL，确保 dev（localhost）和 production（markedit://）都走同一协议处理器
+        const mod = await import(`markedit://plugins/${m.id}/${m.entry}`)
+        if (mod.default) {
+          this.register({
+            ...mod.default,
+            id: m.id,
+            name: m.name || m.id,
+            version: m.version,
+            description: m.description,
+          })
+        }
+      } catch (e) {
+        console.error(`[plugin] failed to load ${m.id}:`, e)
+      }
+    }
+  }
 }
 
 export const pluginRegistry = new PluginRegistry()

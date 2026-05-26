@@ -4,6 +4,14 @@ export interface FileEntry {
   path: string
 }
 
+export interface PluginManifest {
+  id: string
+  name: string
+  version: string
+  entry: string
+  description?: string
+}
+
 export interface ElectronAPI {
   readFile: (filePath: string) => Promise<{ path: string; content: string }>
   writeFile: (filePath: string, content: string) => Promise<boolean>
@@ -31,6 +39,8 @@ export interface ElectronAPI {
   onMenuSave: (cb: () => void) => void
   getAppPath: () => Promise<string>
   setLanguage: (lang: string) => void
+  openPluginDir: () => Promise<void>
+  scanPlugins: () => Promise<PluginManifest[]>
 }
 
 declare global {

@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 系统 =====
   getAppPath: () => ipcRenderer.invoke('app:getPath'),
 
+  // ===== 插件系统 =====
+  openPluginDir: () => ipcRenderer.invoke('plugins:openDir'),
+  scanPlugins: () => ipcRenderer.invoke('plugins:scan'),
+
   // ===== 语言切换 =====
   setLanguage: (lang) => ipcRenderer.send('language:changed', lang),
 })
