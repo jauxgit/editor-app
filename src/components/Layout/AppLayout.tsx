@@ -7,10 +7,12 @@ import { FileTree } from '../FileTree/FileTree'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
+import { PluginManager } from '../Settings/PluginManager'
 import { MenuBar } from './MenuBar'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [pluginManagerOpen, setPluginManagerOpen] = useState(false)
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined)
   const t = useT()
   const tRef = useRef(t)
@@ -113,6 +115,13 @@ export function AppLayout() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // 命令面板/插件管理弹窗的自定义事件
+  useEffect(() => {
+    const handler = () => setPluginManagerOpen(true)
+    window.addEventListener('open-plugin-manager', handler)
+    return () => window.removeEventListener('open-plugin-manager', handler)
+  }, [])
 
   // 拖拽文件/文件夹到窗口
   useEffect(() => {
@@ -262,12 +271,13 @@ export function AppLayout() {
   return (
     <>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
       {isDragOver && (
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-indigo-500 ring-inset drag-over-overlay" />
       )}
       <div className={`h-full flex flex-col ${bg} ${textColor}`}>
         {/* ===== 菜单栏 ===== */}
-        <MenuBar onOpenPalette={() => setPaletteOpen(true)} />
+        <MenuBar onOpenPalette={() => setPaletteOpen(true)} onOpenPluginManager={() => setPluginManagerOpen(true)} />
 
         {/* ===== 工具栏 ===== */}
       <div className={`h-10 flex items-center px-3 gap-2 border-b ${borderColor} select-none shrink-0`}>

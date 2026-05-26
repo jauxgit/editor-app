@@ -34,6 +34,7 @@ export interface MarkEditPlugin {
 class PluginRegistry {
   private plugins = new Map<string, MarkEditPlugin>()
   private activeIds = new Set<string>()
+  private builtinIds = new Set<string>()
   private listeners = new Set<() => void>()
   private _version = 0
 
@@ -48,9 +49,10 @@ class PluginRegistry {
     this.notify()
   }
 
-  register(plugin: MarkEditPlugin) {
+  register(plugin: MarkEditPlugin, builtin = false) {
     this.plugins.set(plugin.id, plugin)
     this.activeIds.add(plugin.id)
+    if (builtin) this.builtinIds.add(plugin.id)
     this.changed()
   }
 
@@ -168,10 +170,32 @@ class PluginRegistry {
     return result
   }
 
+  /** 清除并重新加载所有外置插件 */
+  async reloadExternal() {
+    // 删除非内置插件
+    for (const [id] of this.plugins) {
+      if (!this.builtinIds.has(id)) {
+        this.activeIds.delete(id)
+        this.plugins.delete(id)
+      }
+    }
+    this.changed()
+    await this.scanExternal()
+  }
+
   /** React 订阅：注册表变更时通知组件重渲染。返回取消订阅函数 */
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn)
     return () => { this.listeners.delete(fn) }
+  }
+
+  /** 列出所有已注册插件（供管理 UI 使用） */
+  listAll(): { id: string; name: string; version: string; description?: string; active: boolean }[] {
+    const result: { id: string; name: string; version: string; description?: string; active: boolean }[] = []
+    for (const [id, p] of this.plugins) {
+      result.push({ id, name: p.name, version: p.version, description: p.description, active: this.activeIds.has(id) })
+    }
+    return result
   }
 
   /** 扫描并加载外置插件（动态 import ESM 模块） */
@@ -191,6 +215,17 @@ class PluginRegistry {
             version: m.version,
             description: m.description,
           })
+          // 检查持久化状态：如果该插件在禁用列表，则停用它
+          try {
+            const raw = localStorage.getItem('markedit-settings')
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              const state = parsed?.state
+              if (state?.disabledPlugins?.includes(m.id)) {
+                this.deactivate(m.id)
+              }
+            }
+          } catch { /* 静默 */ }
         }
       } catch (e) {
         console.error(`[plugin] failed to load ${m.id}:`, e)

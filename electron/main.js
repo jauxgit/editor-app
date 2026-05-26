@@ -71,7 +71,9 @@ function getDistDir() {
 const electronDir = getElectronDir()
 const distDir = getDistDir()
 // 插件目录：dev 时在项目根目录，打包后在 exe 同级目录
-const pluginsDir = join(isDev ? app.getAppPath() : dirname(app.getPath('exe')), 'plugins')
+const pluginsDir = isDev
+  ? join(dirname(dirname(fileURLToPath(import.meta.url))), 'plugins')
+  : join(dirname(process.execPath), 'plugins')
 
 // ===== 自定义协议：serve dist 文件 + 插件文件 =====
 function registerCustomProtocol() {

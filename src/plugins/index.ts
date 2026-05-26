@@ -6,10 +6,10 @@ import { highlightThemePlugin } from './builtin/highlightThemes'
 
 /** 注册所有内置插件 + 加载外置插件 */
 export function registerBuiltinPlugins() {
-  pluginRegistry.register(multiCursorPlugin())
-  pluginRegistry.register(codeLanguagesPlugin())
-  pluginRegistry.register(markdownPipelinePlugin())
-  pluginRegistry.register(highlightThemePlugin())
+  pluginRegistry.register(multiCursorPlugin(), true)
+  pluginRegistry.register(codeLanguagesPlugin(), true)
+  pluginRegistry.register(markdownPipelinePlugin(), true)
+  pluginRegistry.register(highlightThemePlugin(), true)
 
   // 异步扫描外置插件
   pluginRegistry.scanExternal().catch(e =>

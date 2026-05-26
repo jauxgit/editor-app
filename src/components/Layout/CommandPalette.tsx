@@ -159,6 +159,9 @@ export function useRegisterCommands() {
   useEffect(() => {
     commands.clear()
     commands.registerAll([
+      { id: 'plugins.manager', label: t('cmd.plugins.manager'), category: 'Plugins', action: () => {
+        window.dispatchEvent(new CustomEvent('open-plugin-manager'))
+      }},
       { id: 'file.new', label: t('cmd.file.new'), category: t('cmd.category.file'), action: async () => {
         const store = useWorkspaceStore.getState()
         if (store.root) {
