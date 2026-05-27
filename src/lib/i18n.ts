@@ -172,6 +172,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
+    'fileTree.addFile': '新建文件',
 
     'cmdPalette.placeholder': '输入命令...',
     'cmdPalette.noResults': '无匹配命令',

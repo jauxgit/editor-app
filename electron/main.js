@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol, shell } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readFile, writeFile, readdir, mkdir, copyFile, rename } from 'node:fs/promises'
+import { readFile, writeFile, readdir, mkdir, copyFile, rename, unlink, rm } from 'node:fs/promises'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
@@ -270,6 +270,24 @@ ipcMain.handle('file:rename', async (_e, oldPath, newPath) => {
   }
 })
 
+ipcMain.handle('file:delete', async (_e, filePath) => {
+  try {
+    await unlink(filePath)
+    return true
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('dir:delete', async (_e, dirPath) => {
+  try {
+    await rm(dirPath, { recursive: true, force: true })
+    return true
+  } catch {
+    return false
+  }
+})
+
 ipcMain.handle('dir:list', async (_e, dirPath) => {
   const entries = await readdir(dirPath, { withFileTypes: true })
   return entries
@@ -376,6 +394,24 @@ ipcMain.handle('image:writeBase64', async (_e, workspaceRoot, base64Data, filena
   }
 })
 
+// 渲染进程主动拉取启动时的文件/文件夹参数（避免 IPC 时序竞争）
+ipcMain.handle('app:getStartupArgs', async () => {
+  const results = []
+  for (const arg of process.argv) {
+    if (!arg || arg === process.execPath) continue
+    if (!existsSync(arg)) continue
+    const stat = statSync(arg)
+    if (stat.isFile()) {
+      try {
+        results.push({ type: 'file', path: arg, content: readFileSync(arg, 'utf-8') })
+      } catch { /* skip binary */ }
+    } else if (stat.isDirectory()) {
+      results.push({ type: 'folder', path: arg })
+    }
+  }
+  return results
+})
+
 ipcMain.handle('app:getPath', async () => {
   return app.getPath('documents')
 })
@@ -433,10 +469,7 @@ app.whenReady().then(() => {
   registerCustomProtocol()
   const win = createWindow()
 
-  // 处理启动时传入的文件/文件夹参数（拖拽到 exe 首次启动）
-  win.webContents.on('did-finish-load', () => {
-    processExternalArgs(process.argv, win)
-  })
+  // 由渲染进程主动拉取启动参数，避免 IPC 时序竞争
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

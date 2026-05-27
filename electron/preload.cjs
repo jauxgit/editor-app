@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
   saveDialog: (defaultPath) => ipcRenderer.invoke('file:saveDialog', defaultPath),
   rename: (oldPath, newPath) => ipcRenderer.invoke('file:rename', oldPath, newPath),
+  deleteFile: (filePath) => ipcRenderer.invoke('file:delete', filePath),
+  deleteDir: (dirPath) => ipcRenderer.invoke('dir:delete', dirPath),
   openFileDialog: () => ipcRenderer.invoke('dialog:openFile'),
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
 
@@ -35,6 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ===== 系统 =====
   getAppPath: () => ipcRenderer.invoke('app:getPath'),
+  getStartupArgs: () => ipcRenderer.invoke('app:getStartupArgs'),
 
   // ===== 插件系统 =====
   openPluginDir: () => ipcRenderer.invoke('plugins:openDir'),

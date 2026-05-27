@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { createNewFile } from '../../lib/commands'
+import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index'
 import type { FileEntry } from '../../types/electron'
 
 interface TreeNodeProps {
@@ -12,6 +13,9 @@ interface TreeNodeProps {
   onExpand: (entry: FileEntry) => void
   onAddFile: (entry: FileEntry) => void
   onRename: (entry: FileEntry, newName: string) => Promise<boolean>
+  onContextMenu: (e: React.MouseEvent, entry: FileEntry) => void
+  isRenaming: boolean
+  onRenameTriggered: () => void
   activeTabPath: string | null
   theme: 'dark' | 'light'
   expandedDirs: Set<string>
@@ -19,7 +23,7 @@ interface TreeNodeProps {
   loadingDirs: Set<string>
 }
 
-function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, activeTabPath, theme, expandedDirs, childrenMap, loadingDirs }: TreeNodeProps) {
+function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onContextMenu, isRenaming, onRenameTriggered, activeTabPath, theme, expandedDirs, childrenMap, loadingDirs }: TreeNodeProps) {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -40,13 +44,18 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, active
 
   const paddingLeft = 12 + depth * 16
 
+  // 外部触发重命名（右键菜单）
+  useEffect(() => {
+    if (isRenaming && !renaming) {
+      startRename()
+    }
+  }, [isRenaming])
+
   const startRename = () => {
-    // 名称去掉扩展名供编辑
     const dot = entry.name.lastIndexOf('.')
     const base = dot > 0 ? entry.name.slice(0, dot) : entry.name
     setRenameValue(base)
     setRenaming(true)
-    // 异步聚焦并选中文件名主体
     requestAnimationFrame(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
@@ -56,10 +65,10 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, active
   const confirmRename = async () => {
     if (!renaming) return
     setRenaming(false)
+    onRenameTriggered()
     const trimmed = renameValue.trim()
     if (!trimmed || trimmed === entry.name) return
 
-    // 保留原扩展名（如果是文件且有扩展名）
     const dot = entry.name.lastIndexOf('.')
     const ext = (!entry.isDirectory && dot > 0) ? entry.name.slice(dot) : ''
     const newName = ext ? trimmed + ext : trimmed
@@ -69,6 +78,7 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, active
 
   const cancelRename = () => {
     setRenaming(false)
+    onRenameTriggered()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -99,6 +109,7 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, active
         style={{ paddingLeft: `${paddingLeft}px` }}
         onDoubleClick={entry.isDirectory ? undefined : startRename}
         onClick={handleRowClick}
+        onContextMenu={e => onContextMenu(e, entry)}
       >
         {/* 展开/折叠指示器 */}
         <span className="text-xs shrink-0 w-4 text-center">
@@ -145,6 +156,9 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, active
             onExpand={onExpand}
             onAddFile={onAddFile}
             onRename={onRename}
+            onContextMenu={onContextMenu}
+            isRenaming={isRenaming}
+            onRenameTriggered={onRenameTriggered}
             activeTabPath={activeTabPath}
             theme={theme}
             expandedDirs={expandedDirs}
@@ -225,6 +239,32 @@ export function FileTree() {
     }
   }, [openFile])
 
+  // 右键菜单状态
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: FileEntry } | null>(null)
+  const [renamingPath, setRenamingPath] = useState<string | null>(null)
+
+  // 右键菜单
+  const handleContextMenu = useCallback((e: React.MouseEvent, entry: FileEntry) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setCtxMenu({ x: e.clientX, y: e.clientY, entry })
+  }, [])
+
+  const handleDelete = useCallback(async (entry: FileEntry) => {
+    if (!window.electronAPI) return
+    setCtxMenu(null)
+    const ok = entry.isDirectory
+      ? await window.electronAPI.deleteDir(entry.path)
+      : await window.electronAPI.deleteFile(entry.path)
+    if (ok) {
+      // 如果被删除的文件在标签中，关闭标签
+      const store = useWorkspaceStore.getState()
+      const isOpen = store.openTabs.some(t => t.path === entry.path)
+      if (isOpen) store.closeTab(entry.path)
+      store.triggerRefresh()
+    }
+  }, [])
+
   // 重命名
   const handleRename = useCallback(async (entry: FileEntry, newName: string): Promise<boolean> => {
     if (!window.electronAPI) return false
@@ -248,6 +288,25 @@ export function FileTree() {
     store.triggerRefresh()
     return true
   }, [])
+
+  const themeVal = useEditorStore(s => s.theme)
+
+  // 根据右键目标构建菜单项
+  const isRenamingEntry = (path: string) => renamingPath === path
+  const triggerRename = (path: string) => setRenamingPath(path)
+  const clearRenaming = () => setRenamingPath(null)
+
+  const ctxMenuItems: ContextMenuItem[] = ctxMenu ? [
+    { id: 'rename', label: 'Rename', action: () => {
+      setCtxMenu(null)
+      setRenamingPath(ctxMenu.entry.path)
+    }},
+    ctxMenu.entry.isDirectory
+      ? { id: 'new-file', label: 'New File', action: () => { setCtxMenu(null); handleAddFile(ctxMenu.entry) } }
+      : null,
+    { id: 'div1', divider: true },
+    { id: 'delete', label: ctxMenu.entry.isDirectory ? 'Delete Folder' : 'Delete', action: () => handleDelete(ctxMenu.entry) },
+  ].filter(Boolean) as ContextMenuItem[] : []
 
   return (
     <div className="h-full flex flex-col text-sm" style={{ backgroundColor: theme === 'dark' ? '#111827' : '#f3f4f6', color: theme === 'dark' ? '#d1d5db' : '#374151' }}>
@@ -274,6 +333,9 @@ export function FileTree() {
             onExpand={handleExpand}
             onAddFile={handleAddFile}
             onRename={handleRename}
+            onContextMenu={handleContextMenu}
+            isRenaming={isRenamingEntry(entry.path)}
+            onRenameTriggered={clearRenaming}
             activeTabPath={activeTabPath}
             theme={theme}
             expandedDirs={expandedDirs}
@@ -281,6 +343,15 @@ export function FileTree() {
             loadingDirs={loadingDirs}
           />
         ))}
+        {ctxMenu && (
+          <ContextMenu
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            items={ctxMenuItems}
+            onClose={() => setCtxMenu(null)}
+            theme={theme}
+          />
+        )}
       </div>
     </div>
   )

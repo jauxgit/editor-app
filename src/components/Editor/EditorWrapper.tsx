@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { EditorState } from '@codemirror/state'
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine,
@@ -15,7 +15,15 @@ import { useEditorStore } from '../../stores/editorStore'
 import { useImageHandler } from './ImageDropHandler'
 import { usePlugins, pluginRegistry } from '../../lib/pluginRegistry'
 import { setActiveEditorView } from '../../lib/commands'
+import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index'
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin'
+
+/** 构建编辑区右键菜单（全部由外置插件注册） */
+function buildEditorContextMenu(
+  registry: import('../../lib/pluginRegistry').PluginRegistry
+): ContextMenuItem[] {
+  return registry.getContextMenuItems()
+}
 
 interface Props {
   docPath: string
@@ -31,6 +39,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const tab = useWorkspaceStore(s => s.openTabs.find(t => t.path === docPath))
   const theme = useEditorStore(s => s.theme)
   const registry = usePlugins()
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; view: EditorView } | null>(null)
 
   // 在光标位置插入文本
   const onInsertAtCursor = useCallback((text: string) => {
@@ -217,11 +226,39 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     return () => window.removeEventListener('image:dblclick', handler)
   }, [])
 
+  // 编辑区右键菜单
+  useEffect(() => {
+    const el = editorRef.current
+    if (!el) return
+    const handler = (e: MouseEvent) => {
+      e.preventDefault()
+      const view = viewRef.current
+      if (!view) return
+      setCtxMenu({ x: e.clientX, y: e.clientY, view })
+    }
+    el.addEventListener('contextmenu', handler)
+    return () => el.removeEventListener('contextmenu', handler)
+  }, [])
+
+  // 构建 MD 语法插入 + 插件右键菜单项
+  const editorCtxItems: ContextMenuItem[] = ctxMenu ? buildEditorContextMenu(registry) : []
+
   return (
-    <div
-      ref={editorRef}
-      className="h-full w-full"
-      style={{ overflow: 'auto' }}
-    />
+    <>
+      <div
+        ref={editorRef}
+        className="h-full w-full"
+        style={{ overflow: 'auto' }}
+      />
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={editorCtxItems}
+          onClose={() => setCtxMenu(null)}
+          theme={theme}
+        />
+      )}
+    </>
   )
 }

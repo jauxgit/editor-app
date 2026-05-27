@@ -17,6 +17,8 @@ export interface ElectronAPI {
   writeFile: (filePath: string, content: string) => Promise<boolean>
   saveDialog: (defaultPath?: string) => Promise<string | null>
   rename: (oldPath: string, newPath: string) => Promise<boolean>
+  deleteFile: (filePath: string) => Promise<boolean>
+  deleteDir: (dirPath: string) => Promise<boolean>
   openFileDialog: () => Promise<{ path: string; content: string } | null>
   openFolderDialog: () => Promise<{ path: string } | null>
   listDir: (dirPath: string) => Promise<FileEntry[]>
@@ -39,6 +41,7 @@ export interface ElectronAPI {
   onMenuSave: (cb: () => void) => void
   getAppPath: () => Promise<string>
   setLanguage: (lang: string) => void
+  getStartupArgs: () => Promise<{ type: 'file' | 'folder'; path: string; content?: string }[]>
   openPluginDir: () => Promise<void>
   scanPlugins: () => Promise<PluginManifest[]>
 }

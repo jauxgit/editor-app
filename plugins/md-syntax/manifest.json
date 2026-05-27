@@ -1,0 +1,7 @@
+{
+  "id": "md-syntax",
+  "name": "Markdown Syntax",
+  "version": "1.0.0",
+  "entry": "index.js",
+  "description": "编辑区右键菜单：插入 Heading、Bold、Code Block 等基础 MD 语法"
+}

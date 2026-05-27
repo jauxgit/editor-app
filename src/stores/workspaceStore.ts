@@ -45,6 +45,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   openFile: (path, content) => {
+    // 始终记录最近打开的文件路径
+    useEditorStore.getState().setLastFilePath(path)
+
+    // 如果文件不在当前根目录下，自动更新根目录
+    const currentRoot = get().root
+    const parentDir = path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')))
+    if (parentDir && parentDir !== currentRoot) {
+      get().setRoot(parentDir)
+    }
+
+    // 打开/切换到标签
     const tabs = get().openTabs
     const existing = tabs.find(t => t.path === path)
     if (existing) {
@@ -56,8 +67,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       openTabs: [...tabs, { path, name, content, isDirty: false }],
       activeTabPath: path,
     })
-    // 记录最近打开的文件路径
-    useEditorStore.getState().setLastFilePath(path)
   },
 
   closeTab: (path) => {

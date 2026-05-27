@@ -28,7 +28,7 @@ interface EditorState {
 export const useEditorStore = create<EditorState>()(
   persist(
     (set) => ({
-      viewMode: 'preview',
+      viewMode: 'source',
       theme: 'light',
       showFileTree: true,
       highlightTheme: 'github-dark',

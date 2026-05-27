@@ -39,26 +39,39 @@ export function AppLayout() {
   // 注册命令面板命令
   useRegisterCommands()
 
-  // 启动时恢复左侧目录 + 最近打开的文件
+  // 启动时检查是否有启动参数（从 Explorer 双击打开），否则恢复上次记录
   useEffect(() => {
     const store = useEditorStore.getState()
     const ws = useWorkspaceStore.getState()
 
-    // 先恢复左侧文件树目录
-    if (store.lastRootPath) {
-      ws.setRoot(store.lastRootPath)
-    }
+    ;(async () => {
+      // 优先处理启动参数（从 Explorer 双击打开的文件/文件夹）
+      const args = window.electronAPI ? await window.electronAPI.getStartupArgs() : []
+      if (args.length > 0) {
+        for (const arg of args) {
+          if (arg.type === 'file') {
+            ws.openFile(arg.path, arg.content || '')
+          } else if (arg.type === 'folder') {
+            ws.setRoot(arg.path)
+          }
+        }
+        return
+      }
 
-    // 再恢复最近打开的文件
-    const lastPath = store.lastFilePath
-    if (lastPath && window.electronAPI) {
-      window.electronAPI.readFile(lastPath).then(({ content }) => {
-        ws.openFile(lastPath, content)
-      }).catch(() => {
-        // 文件已被删除，清除记录
-        useEditorStore.getState().setLastFilePath(null)
-      })
-    }
+      // 无启动参数时恢复上次记录
+      if (store.lastRootPath) {
+        ws.setRoot(store.lastRootPath)
+      }
+
+      const lastPath = store.lastFilePath
+      if (lastPath && window.electronAPI) {
+        window.electronAPI.readFile(lastPath).then(({ content }) => {
+          ws.openFile(lastPath, content)
+        }).catch(() => {
+          useEditorStore.getState().setLastFilePath(null)
+        })
+      }
+    })()
   }, [])
 
   // 主题 class 切换
