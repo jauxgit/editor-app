@@ -236,9 +236,9 @@ class PluginRegistry {
           this.register({
             ...mod.default,
             id: m.id,
-            name: m.name || m.id,
-            version: m.version,
-            description: m.description,
+            name: m.name || mod.default.name || m.id,
+            version: m.version || mod.default.version || '0.0.0',
+            description: m.description || mod.default.description,
           })
           // 检查持久化状态：如果该插件在禁用列表，则停用它
           try {

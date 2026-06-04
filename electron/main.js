@@ -380,18 +380,25 @@ ipcMain.handle('plugins:scan', async () => {
     const plugins = []
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        const pluginJsonPath = join(pluginsDir, entry.name, 'plugin.json')
-        try {
-          const json = JSON.parse(await readFile(pluginJsonPath, 'utf-8'))
+        // 先尝试 manifest.json（新版），再尝试 plugin.json（旧版兼容）
+        let manifest = null
+        for (const name of ['manifest.json', 'plugin.json']) {
+          const fp = join(pluginsDir, entry.name, name)
+          try {
+            manifest = JSON.parse(await readFile(fp, 'utf-8'))
+            break
+          } catch { /* try next */ }
+        }
+        if (manifest) {
           plugins.push({
             id: entry.name,
-            name: json.name || entry.name,
-            version: json.version || '0.0.0',
-            description: json.description || '',
-            entry: json.main || 'index.js',
+            name: manifest.name || entry.name,
+            version: manifest.version || '0.0.0',
+            description: manifest.description || '',
+            entry: manifest.entry || manifest.main || 'index.js',
           })
-        } catch {
-          // 无 plugin.json 或无法解析，尝试直接加载 index.js
+        } else {
+          // 无任何 manifest 文件，尝试直接加载 index.js
           plugins.push({
             id: entry.name,
             name: entry.name,
