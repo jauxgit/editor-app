@@ -1,10 +1,9 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { highlightSelectionMatches, openSearchPanel, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
-import { oneDark } from '@codemirror/theme-one-dark';
+import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
 import {
   crosshairCursor,
   drawSelection,
@@ -89,7 +88,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       crosshairCursor(),
       history(),
       closeBrackets(),
-      syntaxHighlighting(defaultHighlightStyle),
+      warmSyntaxHighlight,
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
@@ -106,7 +105,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
         }),
       // 从插件注册表收集扩展
       ...registry.getAllExtensions(),
-      ...(theme === 'dark' ? [oneDark] : []),
+      warmEditorTheme,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           const content = update.state.doc.toString();

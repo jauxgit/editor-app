@@ -5,6 +5,7 @@ import { useT } from '../../lib/i18n'
 import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { getActiveEditorView, createNewFile } from '../../lib/commands'
+import { editorThemes } from '../../lib/editorThemes'
 
 interface MenuItem {
   id: string
@@ -30,10 +31,10 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const theme = useEditorStore(s => s.theme)
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
-  const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const setTheme = useEditorStore(s => s.setTheme)
+  const currentTheme = useEditorStore(s => s.theme)
   const root = useWorkspaceStore(s => s.root)
   const closeTab = useWorkspaceStore(s => s.closeTab)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
@@ -50,6 +51,16 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
     }
     requestAnimationFrame(() => document.addEventListener('mousedown', handler))
     return () => document.removeEventListener('mousedown', handler)
+  }, [openMenu])
+
+  // ESC 关闭下拉
+  useEffect(() => {
+    if (!openMenu) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenu(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [openMenu])
 
   // ===== 文件菜单动作 =====
@@ -72,14 +83,12 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const newFile = async () => {
     const store = useWorkspaceStore.getState()
     if (store.root) {
-      // 已打开文件夹 → 直接在根目录创建文件
       const path = await createNewFile(store.root)
       if (path) {
         store.openFile(path, '')
         store.triggerRefresh()
       }
     } else {
-      // 未打开文件夹 → 创建临时 untitled 标签
       const id = nextUntitledId()
       store.openUntitled(id)
     }
@@ -130,7 +139,6 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
       const text = await navigator.clipboard.readText()
       v.dispatch(v.state.replaceSelection(text))
     } catch {
-      // Clipboard API 不可用时 fallback
       document.execCommand('paste')
     }
   }
@@ -179,7 +187,12 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
         { id: 'preview-mode', label: t('menu.previewMode'), action: () => setViewMode('preview') },
         { id: 'split-mode', label: t('menu.splitMode'), action: () => setViewMode('split') },
         { id: 'sep6', divider: true },
-        { id: 'toggle-theme', label: t('menu.toggleTheme'), action: toggleTheme },
+        // 编辑器主题列表
+        ...editorThemes.map(et => ({
+          id: `theme.${et.id}`,
+          label: `${currentTheme === et.id ? '● ' : '○ '}${t(`editorTheme.${et.id}`)}`,
+          action: () => setTheme(et.id),
+        })),
         { id: 'sep7', divider: true },
         { id: 'command-palette', label: t('menu.commandPalette'), shortcut: 'Ctrl+Shift+P', action: () => { onOpenPalette(); setOpenMenu(null) } },
       ],
@@ -208,61 +221,81 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
     setOpenMenu(null)
   }
 
-  // 主题色
-  const menuBarBg = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'
-  const menuBarBorder = theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-  const labelHover = theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-  const labelActive = theme === 'dark' ? 'bg-gray-700 text-gray-100' : 'bg-gray-200 text-gray-800'
-  const textColor = theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-  const dropdownBg = theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-  const itemHover = theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-  const dimText = theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-  const dividerColor = theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-
   return (
     <div
       ref={menuRef}
-      className={`flex items-center h-7 text-xs border-b select-none shrink-0 px-1 ${menuBarBg} ${menuBarBorder}`}
+      className="flex items-center h-7 text-xs border-b select-none shrink-0 px-1 gap-0.5"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
     >
-      {menuGroups.map(menu => (
-        <div key={menu.id} className="relative">
-          <button
-            onClick={() => handleMenuClick(menu.id)}
-            onMouseEnter={() => handleMenuHover(menu.id)}
-            className={`px-3 py-1 rounded transition-colors ${
-              openMenu === menu.id
-                ? `${labelActive}`
-                : `${textColor} ${labelHover}`
-            }`}
-          >
-            {menu.label}
-          </button>
-
-          {openMenu === menu.id && (
-            <div
-              className={`absolute top-full left-0 z-50 w-52 py-1 rounded-lg border shadow-xl ${dropdownBg}`}
-              style={{ minWidth: '200px' }}
+      {menuGroups.map(menu => {
+        const isOpen = openMenu === menu.id
+        return (
+          <div key={menu.id} className="relative">
+            <button
+              onClick={() => handleMenuClick(menu.id)}
+              onMouseEnter={() => handleMenuHover(menu.id)}
+              className="px-3 py-1 rounded transition-all duration-100 text-xs"
+              style={{
+                color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: isOpen ? 'var(--accent-muted)' : 'transparent',
+              }}
             >
-              {menu.items.map(item =>
-                item.divider ? (
-                  <div key={item.id} className={`mx-2 my-1 border-t ${dividerColor}`} />
-                ) : (
-                  <button
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 text-left text-xs transition-colors ${itemHover} ${textColor}`}
-                  >
-                    <span>{item.label}</span>
-                    {item.shortcut && (
-                      <span className={`ml-6 text-[11px] ${dimText}`}>{item.shortcut}</span>
-                    )}
-                  </button>
-                )
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+              {menu.label}
+            </button>
+
+            {isOpen && (
+              <div
+                className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-primary)',
+                  minWidth: '210px',
+                  transformOrigin: 'top left',
+                }}
+              >
+                {menu.items.map((item, idx) =>
+                  item.divider ? (
+                    <div
+                      key={item.id}
+                      className="mx-2 my-1 border-t"
+                      style={{ borderColor: 'var(--border)' }}
+                    />
+                  ) : (
+                    <button
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs transition-colors duration-75"
+                      style={{
+                        color: 'var(--text-primary)',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'var(--accent-muted)'
+                        e.currentTarget.style.color = 'var(--accent)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = 'var(--text-primary)'
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      {item.shortcut && (
+                        <span style={{ color: 'var(--text-dim)', fontSize: '11px', marginLeft: '24px' }}>
+                          {item.shortcut}
+                        </span>
+                      )}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <div className="ml-auto flex items-center gap-2">
+        {/* Spacer */}
+      </div>
     </div>
   )
 }

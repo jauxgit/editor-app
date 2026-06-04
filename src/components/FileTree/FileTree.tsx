@@ -17,13 +17,52 @@ interface TreeNodeProps {
   isRenaming: boolean
   onRenameTriggered: () => void
   activeTabPath: string | null
-  theme: 'dark' | 'light'
   expandedDirs: Set<string>
   childrenMap: Record<string, FileEntry[]>
   loadingDirs: Set<string>
 }
 
-function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onContextMenu, isRenaming, onRenameTriggered, activeTabPath, theme, expandedDirs, childrenMap, loadingDirs }: TreeNodeProps) {
+function FileIcon({ name, isDirectory, isExpanded }: { name: string; isDirectory: boolean; isExpanded: boolean }) {
+  const isMd = /\.(md|markdown)$/i.test(name)
+  const isCode = /\.(ts|tsx|js|jsx|py|rs|go|java|cs|c|cpp|h|hpp|css|scss|json|yaml|yml|toml|xml|sql|rb|php|sh)$/i.test(name)
+
+  if (isDirectory) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)', opacity: 0.7 }}>
+        {isExpanded ? (
+          <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.5l2 2H12.5A1.5 1.5 0 0 1 14 6.5v5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" />
+        ) : (
+          <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2l1.5 2H12.5A1.5 1.5 0 0 1 14 6.5v5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" />
+        )}
+      </svg>
+    )
+  }
+  if (isMd) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}>
+        <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h5l4 4v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 3 14.5z" />
+        <polyline points="9.5,1 9.5,5 13.5,5" />
+        <line x1="5.5" y1="8.5" x2="10.5" y2="8.5" />
+        <line x1="5.5" y1="10.5" x2="9" y2="10.5" />
+      </svg>
+    )
+  }
+  if (isCode) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)' }}>
+        <polyline points="4,5 1,8 4,11" /><polyline points="12,5 15,8 12,11" /><line x1="9" y1="4" x2="7" y2="12" />
+      </svg>
+    )
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-dim)' }}>
+      <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h5l4 4v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 3 14.5z" />
+      <polyline points="9.5,1 9.5,5 13.5,5" />
+    </svg>
+  )
+}
+
+function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onContextMenu, isRenaming, onRenameTriggered, activeTabPath, expandedDirs, childrenMap, loadingDirs }: TreeNodeProps) {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -32,15 +71,7 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onCont
   const isExpanded = expandedDirs.has(entry.path)
   const isLoading = loadingDirs.has(entry.path)
   const children = childrenMap[entry.path]
-
-  const bg = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'
-  const text = theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-  const activeBg = theme === 'dark' ? 'bg-gray-700' : 'bg-white'
-  const hoverBg = theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-200'
-  const accentText = theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'
-  const accentHover = theme === 'dark' ? 'hover:text-indigo-300' : 'hover:text-indigo-700'
-  const inputBorder = theme === 'dark' ? 'border-gray-600' : 'border-gray-400'
-  const inputBg = theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'
+  const isActive = activeTabPath === entry.path
 
   const paddingLeft = 12 + depth * 16
 
@@ -103,23 +134,40 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onCont
   return (
     <>
       <div
-        className={`group flex items-center gap-2 pr-3 py-1.5 cursor-pointer ${hoverBg} transition-colors select-none ${
-          activeTabPath === entry.path ? activeBg : ''
-        } ${!entry.isDirectory && !isMd(entry.name) ? 'opacity-50' : ''} ${bg} ${text}`}
-        style={{ paddingLeft: `${paddingLeft}px` }}
+        className="group flex items-center gap-2 pr-3 py-1 cursor-pointer select-none transition-all duration-100"
+        style={{
+          paddingLeft: `${paddingLeft}px`,
+          background: isActive ? 'var(--accent-muted)' : 'transparent',
+          color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+          borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+        }}
+        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)' }}
+        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
         onDoubleClick={entry.isDirectory ? undefined : startRename}
         onClick={handleRowClick}
         onContextMenu={e => onContextMenu(e, entry)}
       >
-        {/* 展开/折叠指示器 */}
-        <span className="text-xs shrink-0 w-4 text-center">
-          {entry.isDirectory && (isLoading ? '⏳' : isExpanded ? '▾' : '▸')}
-        </span>
-        <span className="text-sm shrink-0">
-          {entry.isDirectory ? (isExpanded ? '📂' : '📁') : '📝'}
+        {/* Expand/collapse indicator */}
+        <span className="shrink-0 w-4 flex justify-center" style={{ color: 'var(--text-dim)' }}>
+          {entry.isDirectory && (isLoading ? (
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-spin">
+              <circle cx="8" cy="8" r="6" opacity="0.3" />
+              <path d="M14 8a6 6 0 0 0-6-6" />
+            </svg>
+          ) : (
+            <svg
+              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+            >
+              <polyline points="3,2 7,5 3,8" />
+            </svg>
+          ))}
         </span>
 
-        {/* 名称或重命名输入框 */}
+        {/* File/dir icon */}
+        <FileIcon name={entry.name} isDirectory={entry.isDirectory} isExpanded={isExpanded} />
+
+        {/* Name or rename input */}
         {renaming ? (
           <input
             ref={inputRef}
@@ -127,45 +175,57 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onCont
             onChange={e => setRenameValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={confirmRename}
-            className={`flex-1 min-w-0 px-1 py-0 text-xs border rounded outline-none ${inputBorder} ${inputBg}`}
+            className="flex-1 min-w-0 px-1 py-0 text-xs rounded outline-none border"
+            style={{
+              background: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              borderColor: 'var(--accent)',
+            }}
             onClick={e => e.stopPropagation()}
           />
         ) : (
-          <span className="truncate flex-1 min-w-0">{entry.name}</span>
+          <span className={`truncate flex-1 min-w-0 text-xs ${!entry.isDirectory && !isMd(entry.name) ? 'opacity-50' : ''}`}>
+            {entry.name}
+          </span>
         )}
 
-        {/* 文件夹悬停时显示 + 按钮 */}
+        {/* "+" button for directories */}
         {entry.isDirectory && !renaming && (
           <span
-            className={`ml-auto text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-default ${accentText} ${accentHover}`}
+            className="ml-auto text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-default shrink-0"
+            style={{ color: 'var(--accent)' }}
             onClick={e => { e.stopPropagation(); onAddFile(entry) }}
             title="New File"
           >
-            +
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="6" y1="2" x2="6" y2="10" /><line x1="2" y1="6" x2="10" y2="6" />
+            </svg>
           </span>
         )}
       </div>
-      {/* 子节点 */}
+
+      {/* Children nodes */}
       {entry.isDirectory && isExpanded && children && (
-        children.map(child => (
-          <TreeNode
-            key={child.path}
-            entry={child}
-            depth={depth + 1}
-            onClick={onClick}
-            onExpand={onExpand}
-            onAddFile={onAddFile}
-            onRename={onRename}
-            onContextMenu={onContextMenu}
-            isRenaming={isRenaming}
-            onRenameTriggered={onRenameTriggered}
-            activeTabPath={activeTabPath}
-            theme={theme}
-            expandedDirs={expandedDirs}
-            childrenMap={childrenMap}
-            loadingDirs={loadingDirs}
-          />
-        ))
+        <div style={{ transition: 'all 0.15s' }}>
+          {children.map(child => (
+            <TreeNode
+              key={child.path}
+              entry={child}
+              depth={depth + 1}
+              onClick={onClick}
+              onExpand={onExpand}
+              onAddFile={onAddFile}
+              onRename={onRename}
+              onContextMenu={onContextMenu}
+              isRenaming={isRenaming}
+              onRenameTriggered={onRenameTriggered}
+              activeTabPath={activeTabPath}
+              expandedDirs={expandedDirs}
+              childrenMap={childrenMap}
+              loadingDirs={loadingDirs}
+            />
+          ))}
+        </div>
       )}
     </>
   )
@@ -180,10 +240,9 @@ export function FileTree() {
   const refreshSignal = useWorkspaceStore(s => s.refreshSignal)
   const openFile = useWorkspaceStore(s => s.openFile)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
-  const theme = useEditorStore(s => s.theme)
   const t = useT()
 
-  // 加载根目录（root 或 refreshSignal 变化时重载）
+  // 加载根目录
   useEffect(() => {
     if (!root || !window.electronAPI) return
     setExpandedDirs(new Set())
@@ -239,11 +298,10 @@ export function FileTree() {
     }
   }, [openFile])
 
-  // 右键菜单状态
+  // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: FileEntry } | null>(null)
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
 
-  // 右键菜单
   const handleContextMenu = useCallback((e: React.MouseEvent, entry: FileEntry) => {
     e.preventDefault()
     e.stopPropagation()
@@ -257,7 +315,6 @@ export function FileTree() {
       ? await window.electronAPI.deleteDir(entry.path)
       : await window.electronAPI.deleteFile(entry.path)
     if (ok) {
-      // 如果被删除的文件在标签中，关闭标签
       const store = useWorkspaceStore.getState()
       const isOpen = store.openTabs.some(t => t.path === entry.path)
       if (isOpen) store.closeTab(entry.path)
@@ -265,7 +322,6 @@ export function FileTree() {
     }
   }, [])
 
-  // 重命名
   const handleRename = useCallback(async (entry: FileEntry, newName: string): Promise<boolean> => {
     if (!window.electronAPI) return false
 
@@ -277,21 +333,16 @@ export function FileTree() {
     const ok = await window.electronAPI.rename(entry.path, newPath)
     if (!ok) return false
 
-    // 如果被重命名的文件当前在标签中，更新标签路径
     const store = useWorkspaceStore.getState()
     const isOpen = store.openTabs.some(t => t.path === entry.path)
     if (isOpen) {
       store.updateTabPath(entry.path, newPath)
     }
 
-    // 刷新目录
     store.triggerRefresh()
     return true
   }, [])
 
-  const themeVal = useEditorStore(s => s.theme)
-
-  // 根据右键目标构建菜单项
   const isRenamingEntry = (path: string) => renamingPath === path
   const triggerRename = (path: string) => setRenamingPath(path)
   const clearRenaming = () => setRenamingPath(null)
@@ -309,19 +360,23 @@ export function FileTree() {
   ].filter(Boolean) as ContextMenuItem[] : []
 
   return (
-    <div className="h-full flex flex-col text-sm" style={{ backgroundColor: theme === 'dark' ? '#111827' : '#f3f4f6', color: theme === 'dark' ? '#d1d5db' : '#374151' }}>
-      {/* 标题栏 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/30 select-none">
-        <span className="font-semibold text-xs uppercase tracking-wider opacity-60">
+    <div className="h-full flex flex-col text-sm" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b select-none shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <span className="font-medium text-xs uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>
           {t('fileTree.title')}
         </span>
       </div>
 
-      {/* 文件列表 */}
-      <div className="flex-1 overflow-y-auto py-1">
+      {/* File list */}
+      <div className="flex-1 overflow-y-auto py-0.5">
         {entries.length === 0 && (
-          <div className="px-4 py-8 text-center opacity-40 text-xs">
-            {root ? t('fileTree.empty') : t('fileTree.hint')}
+          <div className="px-4 py-10 text-center" style={{ color: 'var(--text-dim)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="mx-auto mb-2" style={{ opacity: 0.3 }}>
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="13" y2="11" />
+            </svg>
+            <div className="text-xs">{root ? t('fileTree.empty') : t('fileTree.hint')}</div>
           </div>
         )}
         {entries.map(entry => (
@@ -337,7 +392,6 @@ export function FileTree() {
             isRenaming={isRenamingEntry(entry.path)}
             onRenameTriggered={clearRenaming}
             activeTabPath={activeTabPath}
-            theme={theme}
             expandedDirs={expandedDirs}
             childrenMap={childrenMap}
             loadingDirs={loadingDirs}
@@ -349,7 +403,7 @@ export function FileTree() {
             y={ctxMenu.y}
             items={ctxMenuItems}
             onClose={() => setCtxMenu(null)}
-            theme={theme}
+            theme={useEditorStore.getState().theme}
           />
         )}
       </div>

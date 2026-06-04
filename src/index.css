@@ -1,111 +1,219 @@
 @import "tailwindcss";
-@import "highlight.js/styles/github-dark.css";
 
+/* ============================================================
+   MarkEdit · 码记 — 设计系统
+   A warm, tactile studio aesthetic
+   ============================================================ */
+
+@theme {
+  /* ——— Color palette tokens (for Tailwind utility classes if needed) ——— */
+  --color-bg-base: var(--bg-base, #f5f0eb);
+  --color-bg-surface: var(--bg-surface, #ede7e0);
+  --color-bg-elevated: var(--bg-elevated, #ffffff);
+  --color-bg-hover: var(--bg-hover, #e5ded6);
+  --color-bg-active: var(--bg-active, #d9d0c6);
+  --color-border: var(--border, #d5ccc2);
+  --color-border-light: var(--border-light, #e2d9d0);
+  --color-text-primary: var(--text-primary, #2c2824);
+  --color-text-secondary: var(--text-secondary, #6b6358);
+  --color-text-dim: var(--text-dim, #9c9488);
+  --color-accent: var(--accent, #a0703e);
+  --color-accent-hover: var(--accent-hover, #b8864e);
+  --color-accent-muted: var(--accent-muted, rgba(160,112,62,0.12));
+  --color-accent-ring: var(--accent-ring, rgba(160,112,62,0.25));
+}
+
+/* ——— Typography ——— */
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   Theme Variables — fallback defaults (warm-light).
+   Actual theme colors are applied via JS → documentElement.style
+   from lib/editorThemes.ts
+   ============================================================ */
 :root {
   --sidebar-width: 260px;
   --statusbar-height: 28px;
   --toolbar-height: 40px;
 }
 
-/* ===== CodeMirror ===== */
+/* ============================================================
+   Noise texture overlay
+   ============================================================ */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* ============================================================
+   CodeMirror
+   ============================================================ */
 .cm-editor {
   height: 100%;
-  font-size: 15px;
-  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 14.5px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 .cm-editor .cm-scroller { overflow: auto; }
+.cm-editor.cm-focused { outline: none; }
 
-/* ===== 图片 Widget ===== */
+/* Global scrollbar — warm & slim */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ============================================================
+   Image Widget
+   ============================================================ */
 .cm-image-widget {
   display: inline-block;
   max-width: 80%;
-  margin: 4px 0;
-  border-radius: 6px;
+  margin: 6px 0;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.cm-image-widget:hover { border-color: #6366f1; }
+.cm-image-widget:hover { border-color: var(--accent); }
 .cm-image-widget.selected {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
 }
 .cm-image-widget img { display: block; max-width: 100%; height: auto; }
 
-/* ===== Markdown Preview ===== */
+/* ============================================================
+   Markdown Preview
+   ============================================================ */
 .markdown-preview {
   position: relative;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.75;
-  padding: 2rem;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.8;
+  padding: 2.5rem 2rem;
   overflow-y: auto;
   overflow-wrap: break-word;
   height: 100%;
+  color: var(--text-primary);
 }
-.markdown-preview h1 { font-size: 2rem; font-weight: 700; margin: 1.5rem 0 0.75rem; }
-.markdown-preview h2 { font-size: 1.5rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
-.markdown-preview h3 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; }
-.markdown-preview p { margin: 0.5rem 0; }
-.markdown-preview img { max-width: 100%; border-radius: 6px; margin: 0.75rem 0; }
-.markdown-preview code { background: #f3f4f6; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
-.markdown-preview pre { background: #1f2937; color: #e5e7eb; padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 0.75rem 0; }
+
+.markdown-preview h1 {
+  font-size: 2rem; font-weight: 600;
+  margin: 2rem 0 0.75rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.markdown-preview h2 {
+  font-size: 1.5rem; font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.markdown-preview h3 {
+  font-size: 1.25rem; font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+.markdown-preview h4 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.375rem; }
+.markdown-preview h5 { font-size: 1rem; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+.markdown-preview h6 {
+  font-size: 0.875rem; font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--text-dim);
+}
+.markdown-preview p { margin: 0.75rem 0; }
+.markdown-preview img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1rem 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.markdown-preview code {
+  background: var(--bg-hover);
+  padding: 0.2em 0.45em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'JetBrains Mono', monospace;
+}
+.markdown-preview pre {
+  background: #1a1714;
+  color: #e8e2da;
+  padding: 1.25rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
 .markdown-preview pre code { background: none; padding: 0; }
-.markdown-preview blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; color: #6b7280; margin: 0.75rem 0; }
-.markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
-.markdown-preview th, .markdown-preview td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; text-align: left; }
-.markdown-preview th { background: #f9fafb; font-weight: 600; }
-.markdown-preview h4 { font-size: 1.125rem; font-weight: 600; margin: 0.75rem 0 0.375rem; }
-.markdown-preview h5 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-preview h6 { font-size: 0.875rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #6b7280; }
-.markdown-preview strong { font-weight: 700; }
+.markdown-preview blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  color: var(--text-secondary);
+  margin: 1rem 0;
+  background: var(--accent-muted);
+  border-radius: 0 4px 4px 0;
+}
+.markdown-preview table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+.markdown-preview th, .markdown-preview td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.markdown-preview th { background: var(--bg-surface); font-weight: 500; }
+.markdown-preview tr:nth-child(even) { background: var(--bg-base); }
+.markdown-preview strong { font-weight: 600; }
 .markdown-preview em { font-style: italic; }
-.markdown-preview hr { border: none; border-top: 1px solid #d1d5db; margin: 1.5rem 0; }
-.markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-.markdown-preview li { margin: 0.25rem 0; }
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+.markdown-preview ul, .markdown-preview ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+.markdown-preview li { margin: 0.3rem 0; }
 .markdown-preview ul > li { list-style-type: disc; }
 .markdown-preview ol > li { list-style-type: decimal; }
-.markdown-preview del, .markdown-preview s { text-decoration: line-through; color: #9ca3af; }
-.markdown-preview a { color: #4f46e5; text-decoration: underline; }
-.markdown-preview a:hover { color: #4338ca; }
-.markdown-preview input[type="checkbox"] { margin-right: 0.375rem; }
+.markdown-preview del, .markdown-preview s { text-decoration: line-through; color: var(--text-dim); }
+.markdown-preview a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-preview a:hover { color: var(--accent-hover); }
+.markdown-preview input[type="checkbox"] { margin-right: 0.375rem; accent-color: var(--accent); }
 
-/* ===== Dark 预览覆盖 ===== */
-.dark .markdown-preview code { background: #374151; color: #e5e7eb; }
-.dark .markdown-preview blockquote { color: #9ca3af; }
-.dark .markdown-preview th { background: #1f2937; border-color: #374151; }
-.dark .markdown-preview td { border-color: #374151; }
-.dark .markdown-preview h6 { color: #9ca3af; }
-.dark .markdown-preview hr { border-top-color: #374151; }
-.dark .markdown-preview a { color: #818cf8; }
-.dark .markdown-preview a:hover { color: #a5b4fc; }
-.dark .markdown-preview del, .dark .markdown-preview s { color: #6b7280; }
-
-/* ===== 代码块语言标签 ===== */
+/* ============================================================
+   Code block language label (preview)
+   ============================================================ */
 .code-block-wrapper {
   position: relative;
 }
-
 .code-block-wrapper .code-lang-label {
   position: absolute;
   top: 0;
   right: 0;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   line-height: 1;
   padding: 0.25rem 0.6rem;
   border-radius: 0 8px 0 6px;
-  background: rgba(0, 0, 0, 0.35);
-  color: rgba(255, 255, 255, 0.55);
-  letter-spacing: 0.02em;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.04em;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 9rem;
+  font-family: 'IBM Plex Sans', sans-serif;
+  text-transform: uppercase;
 }
 
-/* ===== TOC 浮动面板 ===== */
+/* ============================================================
+   TOC (Table of Contents) panel
+   ============================================================ */
 .toc-panel {
   position: absolute;
   top: 8px;
@@ -117,69 +225,72 @@
   flex-direction: column;
   align-items: flex-end;
 }
-
 .toc-toggle {
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
   font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: inherit;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  transition: background 0.15s, border-color 0.15s;
 }
-
+.toc-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-muted);
+}
 .toc-nav {
   margin-top: 4px;
-  border: 1px solid;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 0;
   overflow-y: auto;
   max-height: calc(100vh - 200px);
   min-width: 200px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  background: var(--bg-elevated);
 }
-
 .toc-link {
   display: block;
-  padding: 3px 12px;
+  padding: 4px 12px;
   font-size: 0.8rem;
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: background 0.1s;
-  color: inherit;
+  color: var(--text-secondary);
 }
-
-.toc-link:hover { background: rgba(99,102,241,0.08); }
-
-.toc-level-1 { font-weight: 600; padding-left: 12px; }
+.toc-link:hover { background: var(--accent-muted); color: var(--accent); }
+.toc-level-1 { font-weight: 500; padding-left: 12px; color: var(--text-primary); }
 .toc-level-2 { padding-left: 24px; }
-.toc-level-3 { padding-left: 36px; font-size: 0.75rem; opacity: 0.85; }
-
+.toc-level-3 { padding-left: 36px; font-size: 0.75rem; }
 .toc-active {
-  color: #4f46e5;
-  background: rgba(99,102,241,0.1);
+  color: var(--accent) !important;
+  background: var(--accent-muted);
 }
 
-/* Dark TOC 覆盖 */
-.dark .toc-toggle { border-color: rgba(255,255,255,0.15); }
-.dark .toc-nav { border-color: rgba(255,255,255,0.1); }
-.dark .toc-active { color: #818cf8; background: rgba(129,140,248,0.15); }
-
-/* ===== Scrollbar ===== */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-
-/* ===== 全局 ===== */
+/* ============================================================
+   Global
+   ============================================================ */
 html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  color: var(--text-primary);
+  background: var(--bg-base);
+}
 
-/* ===== 拖拽覆盖层 ===== */
-.drag-over-overlay { background: rgba(99, 102, 241, 0.04); }
-.dark .drag-over-overlay { background: rgba(99, 102, 241, 0.08); }
+/* Selection color */
+::selection { background: var(--accent-muted); }
+
+/* ============================================================
+   Drag overlay
+   ============================================================ */
+.drag-over-overlay {
+  background: var(--accent-muted);
+}

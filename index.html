@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="antialiased">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' markedit: 'unsafe-inline' 'unsafe-eval' ws: http://localhost:* https:; img-src 'self' markedit: file: data: blob: https:; connect-src 'self' markedit: ws: http://localhost:*;" />
-    <title>MarkEdit</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' markedit: 'unsafe-inline' 'unsafe-eval' ws: http://localhost:* https:; img-src 'self' markedit: file: data: blob: https:; connect-src 'self' markedit: ws: http://localhost:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+    <title>MarkEdit · 码记</title>
   </head>
   <body>
     <div id="root"></div>
