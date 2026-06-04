@@ -5,7 +5,6 @@ import { useT } from '../../lib/i18n'
 import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { getActiveEditorView, createNewFile } from '../../lib/commands'
-import { editorThemes } from '../../lib/editorThemes'
 
 interface MenuItem {
   id: string
@@ -33,8 +32,7 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
 
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
-  const setTheme = useEditorStore(s => s.setTheme)
-  const currentTheme = useEditorStore(s => s.theme)
+  const toggleTheme = useEditorStore(s => s.toggleTheme)
   const root = useWorkspaceStore(s => s.root)
   const closeTab = useWorkspaceStore(s => s.closeTab)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
@@ -187,12 +185,7 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
         { id: 'preview-mode', label: t('menu.previewMode'), action: () => setViewMode('preview') },
         { id: 'split-mode', label: t('menu.splitMode'), action: () => setViewMode('split') },
         { id: 'sep6', divider: true },
-        // 编辑器主题列表
-        ...editorThemes.map(et => ({
-          id: `theme.${et.id}`,
-          label: `${currentTheme === et.id ? '● ' : '○ '}${t(`editorTheme.${et.id}`)}`,
-          action: () => setTheme(et.id),
-        })),
+        { id: 'toggle-theme', label: t('menu.toggleTheme'), action: toggleTheme },
         { id: 'sep7', divider: true },
         { id: 'command-palette', label: t('menu.commandPalette'), shortcut: 'Ctrl+Shift+P', action: () => { onOpenPalette(); setOpenMenu(null) } },
       ],
