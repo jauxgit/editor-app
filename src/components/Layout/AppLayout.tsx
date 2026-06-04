@@ -8,8 +8,9 @@ import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
 import { PluginManager } from '../Settings/PluginManager'
-import { MenuBar } from './MenuBar'
+import { TitleBar } from './TitleBar'
 import { getTheme, editorThemes } from '../../lib/editorThemes'
+import { applyHighlightTheme } from '../../lib/highlightThemes'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -32,6 +33,7 @@ export function AppLayout() {
   const showFileTree = useEditorStore(s => s.showFileTree)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const theme = useEditorStore(s => s.theme)
+  const highlightTheme = useEditorStore(s => s.highlightTheme)
   const cycleTheme = useEditorStore(s => s.cycleTheme)
   const themeDef = getTheme(theme) || editorThemes[0]
 
@@ -84,6 +86,11 @@ export function AppLayout() {
       root.style.setProperty(key, val)
     }
   }, [theme])
+
+  // 注入 highlight.js 预览代码高亮 CSS（独立于 viewMode，确保始终跟随）
+  useEffect(() => {
+    applyHighlightTheme(highlightTheme)
+  }, [highlightTheme])
 
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -288,7 +295,7 @@ export function AppLayout() {
       )}
       <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
         {/* ===== Menu Bar ===== */}
-        <MenuBar onOpenPalette={() => setPaletteOpen(true)} onOpenPluginManager={() => setPluginManagerOpen(true)} />
+        <TitleBar onOpenPalette={() => setPaletteOpen(true)} onOpenPluginManager={() => setPluginManagerOpen(true)} />
 
         {/* ===== Toolbar ===== */}
         <div className="flex items-center h-9 px-3 gap-2 border-b shrink-0 select-none" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}>

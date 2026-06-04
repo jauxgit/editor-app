@@ -44,6 +44,11 @@ export interface ElectronAPI {
   getStartupArgs: () => Promise<{ type: 'file' | 'folder'; path: string; content?: string }[]>
   openPluginDir: () => Promise<void>
   scanPlugins: () => Promise<PluginManifest[]>
+  // 窗口控制（Windows frameless）
+  minimizeWindow: () => Promise<void>
+  maximizeWindow: () => Promise<void>
+  closeWindow: () => Promise<void>
+  isWindowMaximized: () => Promise<boolean>
 }
 
 declare global {

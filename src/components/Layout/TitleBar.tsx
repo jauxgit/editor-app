@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
-import { undo, redo } from '@codemirror/commands'
-import { openSearchPanel } from '@codemirror/search'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useT } from '../../lib/i18n'
 import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { getActiveEditorView, createNewFile } from '../../lib/commands'
+import { undo, redo } from '@codemirror/commands'
+import { openSearchPanel } from '@codemirror/search'
 
 interface MenuItem {
   id: string
@@ -25,19 +25,48 @@ interface Props {
   onOpenPluginManager: () => void
 }
 
-export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
+export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const t = useT()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
-  const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const cycleTheme = useEditorStore(s => s.cycleTheme)
   const root = useWorkspaceStore(s => s.root)
   const closeTab = useWorkspaceStore(s => s.closeTab)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
   const openFile = useWorkspaceStore(s => s.openFile)
   const setRoot = useWorkspaceStore(s => s.setRoot)
+
+  // 窗口最大化状态监听
+  useEffect(() => {
+    if (!window.electronAPI) return
+    window.electronAPI.isWindowMaximized().then(setIsMaximized)
+    const handler = () => {
+      // resize 事件中轮询最大化状态
+      // 在 frameless 窗口中 Electron 不发送最大化事件到渲染进程
+    }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
+  // 双击标题栏最大化/还原
+  const handleTitleBarDoubleClick = useCallback(() => {
+    if (window.electronAPI) {
+      window.electronAPI.maximizeWindow()
+      setIsMaximized(prev => !prev)
+    }
+  }, [])
+
+  // 窗口控制按钮
+  const handleMinimize = () => window.electronAPI?.minimizeWindow()
+  const handleMaximize = () => {
+    window.electronAPI?.maximizeWindow()
+    setIsMaximized(prev => !prev)
+  }
+  const handleClose = () => window.electronAPI?.closeWindow()
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -185,7 +214,7 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
         { id: 'preview-mode', label: t('menu.previewMode'), action: () => setViewMode('preview') },
         { id: 'split-mode', label: t('menu.splitMode'), action: () => setViewMode('split') },
         { id: 'sep6', divider: true },
-        { id: 'toggle-theme', label: t('menu.toggleTheme'), action: toggleTheme },
+        { id: 'toggle-theme', label: t('menu.toggleTheme'), action: cycleTheme },
         { id: 'sep7', divider: true },
         { id: 'command-palette', label: t('menu.commandPalette'), shortcut: 'Ctrl+Shift+P', action: () => { onOpenPalette(); setOpenMenu(null) } },
       ],
@@ -214,81 +243,137 @@ export function MenuBar({ onOpenPalette, onOpenPluginManager }: Props) {
     setOpenMenu(null)
   }
 
+  const isElectron = !!window.electronAPI
+
   return (
     <div
       ref={menuRef}
-      className="flex items-center h-7 text-xs border-b select-none shrink-0 px-1 gap-0.5"
-      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+      className="flex items-center h-8 text-xs border-b select-none shrink-0"
+      style={{
+        background: 'var(--bg-surface)',
+        borderColor: 'var(--border)',
+        color: 'var(--text-secondary)',
+        WebkitAppRegion: 'drag',
+      }}
     >
-      {menuGroups.map(menu => {
-        const isOpen = openMenu === menu.id
-        return (
-          <div key={menu.id} className="relative">
-            <button
-              onClick={() => handleMenuClick(menu.id)}
-              onMouseEnter={() => handleMenuHover(menu.id)}
-              className="px-3 py-1 rounded transition-all duration-100 text-xs"
-              style={{
-                color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: isOpen ? 'var(--accent-muted)' : 'transparent',
-              }}
-            >
-              {menu.label}
-            </button>
-
-            {isOpen && (
-              <div
-                className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg"
+      {/* Menu items */}
+      <div className="flex items-center h-full px-1 gap-0.5 flex-1 min-w-0">
+        {menuGroups.map(menu => {
+          const isOpen = openMenu === menu.id
+          return (
+            <div key={menu.id} className="relative" style={{ WebkitAppRegion: 'no-drag' }}>
+              <button
+                onClick={() => handleMenuClick(menu.id)}
+                onMouseEnter={() => handleMenuHover(menu.id)}
+                className="px-2.5 py-1 rounded transition-all duration-100 text-xs whitespace-nowrap"
                 style={{
-                  background: 'var(--bg-elevated)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)',
-                  minWidth: '210px',
-                  transformOrigin: 'top left',
+                  color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: isOpen ? 'var(--accent-muted)' : 'transparent',
                 }}
               >
-                {menu.items.map((item, idx) =>
-                  item.divider ? (
-                    <div
-                      key={item.id}
-                      className="mx-2 my-1 border-t"
-                      style={{ borderColor: 'var(--border)' }}
-                    />
-                  ) : (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs transition-colors duration-75"
-                      style={{
-                        color: 'var(--text-primary)',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = 'var(--accent-muted)'
-                        e.currentTarget.style.color = 'var(--accent)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.color = 'var(--text-primary)'
-                      }}
-                    >
-                      <span>{item.label}</span>
-                      {item.shortcut && (
-                        <span style={{ color: 'var(--text-dim)', fontSize: '11px', marginLeft: '24px' }}>
-                          {item.shortcut}
-                        </span>
-                      )}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
+                {menu.label}
+              </button>
 
-      <div className="ml-auto flex items-center gap-2">
-        {/* Spacer */}
+              {isOpen && (
+                <div
+                  className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg"
+                  style={{
+                    background: 'var(--bg-elevated)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                    minWidth: '210px',
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  {menu.items.map(item =>
+                    item.divider ? (
+                      <div key={item.id} className="mx-2 my-1 border-t" style={{ borderColor: 'var(--border)' }} />
+                    ) : (
+                      <button
+                        key={item.id}
+                        onClick={() => handleItemClick(item)}
+                        className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs transition-colors duration-75"
+                        style={{ color: 'var(--text-primary)' }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'var(--accent-muted)'
+                          e.currentTarget.style.color = 'var(--accent)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.color = 'var(--text-primary)'
+                        }}
+                      >
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span style={{ color: 'var(--text-dim)', fontSize: '11px', marginLeft: '24px' }}>
+                            {item.shortcut}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
+
+      {/* Window control buttons — Electron frameless (Windows) */}
+      {isElectron && (
+        <div
+          className="flex items-center h-full shrink-0"
+          style={{ WebkitAppRegion: 'no-drag' }}
+          onDoubleClick={handleTitleBarDoubleClick}
+        >
+          <button
+            onClick={handleMinimize}
+            className="flex items-center justify-center w-[46px] h-full transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <line x1="2" y1="5" x2="8" y2="5" />
+            </svg>
+          </button>
+          <button
+            onClick={handleMaximize}
+            className="flex items-center justify-center w-[46px] h-full transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            {isMaximized ? (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <rect x="1.5" y="3.5" width="5" height="5" rx="1" />
+                <path d="M3.5 3.5V2a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H6.5" />
+              </svg>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <rect x="2" y="2" width="6" height="6" rx="1" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={handleClose}
+            className="flex items-center justify-center w-[46px] h-full transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#e05050'
+              e.currentTarget.style.color = '#ffffff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+              <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

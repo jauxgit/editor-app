@@ -45,4 +45,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ===== 语言切换 =====
   setLanguage: (lang) => ipcRenderer.send('language:changed', lang),
+
+  // ===== 窗口控制（Windows frameless） =====
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
 })
