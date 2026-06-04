@@ -58,11 +58,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
     }
 
-    // 打开/切换到标签
+    // 打开/切换到标签 — 已存在时更新内容，防止外部推送（如拖拽到 exe）使用过时内容
     const tabs = get().openTabs
     const existing = tabs.find(t => t.path === path)
     if (existing) {
-      set({ activeTabPath: path })
+      set({
+        activeTabPath: path,
+        openTabs: tabs.map(t =>
+          t.path === path ? { ...t, content, isDirty: false } : t
+        ),
+      })
       return
     }
     const name = path.split(/[/\\]/).pop() || path

@@ -174,7 +174,16 @@ ipcMain.handle('app:getStartupArgs', () => {
       try {
         const stat = statSync(arg)
         if (stat.isDirectory()) return { type: 'folder', path: arg }
-        if (stat.isFile()) return { type: 'file', path: arg }
+        if (stat.isFile()) {
+          // 读取文件内容，确保渲染进程打开时不是空白
+          try {
+            const content = readFileSync(arg, 'utf-8')
+            return { type: 'file', path: arg, content }
+          } catch {
+            // 二进制或不可读文件，返回空内容
+            return { type: 'file', path: arg, content: '' }
+          }
+        }
         return null
       } catch {
         return null
