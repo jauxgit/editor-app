@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol, shell } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readFile, writeFile, readdir, mkdir, copyFile, rename } from 'node:fs/promises'
+import { readFile, writeFile, readdir, mkdir, copyFile, rename, unlink, rm } from 'node:fs/promises'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
@@ -79,57 +79,42 @@ const pluginsDir = isDev
 function registerCustomProtocol() {
   protocol.handle('markedit', async (request) => {
     const url = new URL(request.url)
+    let filePath
 
-    let reqPath = url.pathname
-    if (reqPath.startsWith('/')) reqPath = reqPath.slice(1)
-    if (reqPath.endsWith('/')) reqPath = reqPath.slice(0, -1)
-
-    // 插件路由：markedito://plugins/<plugin-id>/<path>
+    // 插件文件路由：markedit://plugins/<plugin-id>/<path>
     if (url.host === 'plugins') {
-      const parts = reqPath.split('/')
-      const pluginId = parts[0]
-      const pluginRelPath = parts.slice(1).join('/') || 'index.js'
-      const pluginFilePath = join(pluginsDir, pluginId, pluginRelPath)
-
-      // 路径安全检查
-      if (!pluginFilePath.startsWith(join(pluginsDir, pluginId))) {
+      // 安全校验：只允许 plugins 目录下的文件
+      const pluginFilePath = join(pluginsDir, url.pathname)
+      if (!pluginFilePath.startsWith(pluginsDir)) {
         return new Response('Forbidden', { status: 403 })
       }
-
-      try {
-        await mkdir(pluginsDir, { recursive: true })
-        const data = await readFile(pluginFilePath)
-        const ext = extname(pluginFilePath).toLowerCase()
-        const mime = MIME_TYPES[ext] || 'application/octet-stream'
-        return new Response(data, {
-          status: 200,
-          headers: { 'Content-Type': mime, 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' },
-        })
-      } catch {
-        return new Response('Not Found', { status: 404 })
-      }
-    }
-
-    // 原有 dist 文件逻辑
-    if (!reqPath) reqPath = 'index.html'
-    const filePath = join(distDir, reqPath)
-
-    if (!filePath.startsWith(distDir)) {
-      return new Response('Forbidden', { status: 403 })
+      filePath = pluginFilePath
+    } else {
+      // 普通 dist 文件
+      filePath = join(distDir, url.pathname === '/' ? '/index.html' : url.pathname)
     }
 
     try {
       const data = await readFile(filePath)
       const ext = extname(filePath).toLowerCase()
-      const mime = MIME_TYPES[ext] || 'application/octet-stream'
-
+      const mimeMap = {
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+        '.ttf': 'font/ttf',
+      }
+      const contentType = mimeMap[ext] || 'application/octet-stream'
       return new Response(data, {
-        status: 200,
-        headers: {
-          'Content-Type': mime,
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache',
-        },
+        headers: { 'Content-Type': contentType },
       })
     } catch {
       return new Response('Not Found', { status: 404 })
@@ -137,39 +122,35 @@ function registerCustomProtocol() {
   })
 }
 
-const MIME_TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-}
-
+// ===== 创建窗口 =====
 function createWindow() {
-  const win = new BrowserWindow({
+  // Windows 和 macOS 采用不同的标题栏方案
+  const isWindows = process.platform === 'win32'
+  const winOptions = {
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 500,
     title: 'MarkEdit · 码记',
     icon: join(electronDir, '..', 'build', 'icon.png'),
-    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: join(electronDir, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
     },
-  })
+  }
+
+  if (isWindows) {
+    // Windows: 无边框窗口。窗口控制按钮由 React 自绘（跟随 CSS 变量，无帧重建）
+    winOptions.frame = false
+    winOptions.roundedCorners = true
+  } else {
+    // macOS: 隐藏标题栏，保留红绿灯按钮
+    winOptions.titleBarStyle = 'hiddenInset'
+  }
+
+  const win = new BrowserWindow(winOptions)
 
   if (isDev) {
     win.loadURL('http://localhost:5173')
@@ -184,32 +165,87 @@ function createWindow() {
 
 // ===== IPC Handlers =====
 
-async function handleOpenFile(win) {
-  const result = await dialog.showOpenDialog(win, {
-    properties: ['openFile'],
+// 获取启动参数（用于双击打开文件/文件夹）
+ipcMain.handle('app:getStartupArgs', () => {
+  // 跳过 process.execPath，只返回文件/文件夹路径
+  return process.argv
+    .filter(arg => arg && arg !== process.execPath)
+    .map(arg => {
+      try {
+        const stat = statSync(arg)
+        if (stat.isDirectory()) return { type: 'folder', path: arg }
+        if (stat.isFile()) {
+          // 读取文件内容，确保渲染进程打开时不是空白
+          try {
+            const content = readFileSync(arg, 'utf-8')
+            return { type: 'file', path: arg, content }
+          } catch {
+            // 二进制或不可读文件，返回空内容
+            return { type: 'file', path: arg, content: '' }
+          }
+        }
+        return null
+      } catch {
+        return null
+      }
+    })
+    .filter(Boolean)
+})
+
+// 文件操作
+ipcMain.handle('file:read', async (_e, filePath) => {
+  const content = await readFile(filePath, 'utf-8')
+  return { path: filePath, content }
+})
+
+ipcMain.handle('file:write', async (_e, filePath, content) => {
+  await writeFile(filePath, content, 'utf-8')
+  return true
+})
+
+ipcMain.handle('file:saveDialog', async (_e, defaultPath) => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (!win) return null
+  const result = await dialog.showSaveDialog(win, {
+    title: 'Save As',
+    defaultPath,
     filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+      { name: 'Markdown', extensions: ['md'] },
+      { name: 'Text', extensions: ['txt'] },
       { name: 'All Files', extensions: ['*'] },
     ],
   })
-  if (!result.canceled && result.filePaths.length > 0) {
-    const filePath = result.filePaths[0]
-    const content = await readFile(filePath, 'utf-8')
-    win.webContents.send('file:opened', { path: filePath, content })
-  }
-}
+  return result.canceled ? null : result.filePath
+})
 
-async function handleOpenFolder(win) {
-  const result = await dialog.showOpenDialog(win, {
-    properties: ['openDirectory'],
-  })
-  if (!result.canceled && result.filePaths.length > 0) {
-    const folderPath = result.filePaths[0]
-    win.webContents.send('folder:opened', { path: folderPath })
+ipcMain.handle('file:rename', async (_e, oldPath, newPath) => {
+  try {
+    await rename(oldPath, newPath)
+    return true
+  } catch {
+    return false
   }
-}
+})
 
-// 渲染进程主动调用打开文件/文件夹对话框
+ipcMain.handle('file:delete', async (_e, filePath) => {
+  try {
+    await unlink(filePath)
+    return true
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('dir:delete', async (_e, dirPath) => {
+  try {
+    await rm(dirPath, { recursive: true, force: true })
+    return true
+  } catch {
+    return false
+  }
+})
+
+// 对话框
 ipcMain.handle('dialog:openFile', async () => {
   const win = BrowserWindow.getFocusedWindow()
   if (!win) return null
@@ -236,181 +272,26 @@ ipcMain.handle('dialog:openFolder', async () => {
   return { path: result.filePaths[0] }
 })
 
-ipcMain.handle('file:read', async (_e, filePath) => {
-  const content = await readFile(filePath, 'utf-8')
-  return { path: filePath, content }
-})
-
-ipcMain.handle('file:write', async (_e, filePath, content) => {
-  await mkdir(dirname(filePath), { recursive: true })
-  await writeFile(filePath, content, 'utf-8')
-  return true
-})
-
-ipcMain.handle('file:saveDialog', async (_e, defaultPath) => {
-  const win = BrowserWindow.getFocusedWindow()
-  if (!win) return null
-  const result = await dialog.showSaveDialog(win, {
-    defaultPath,
-    filters: [
-      { name: 'Markdown', extensions: ['md'] },
-      { name: 'All Files', extensions: ['*'] },
-    ],
-  })
-  if (result.canceled) return null
-  return result.filePath
-})
-
-ipcMain.handle('file:rename', async (_e, oldPath, newPath) => {
-  try {
-    await rename(oldPath, newPath)
-    return true
-  } catch {
-    return false
-  }
-})
-
+// 目录操作
 ipcMain.handle('dir:list', async (_e, dirPath) => {
-  const entries = await readdir(dirPath, { withFileTypes: true })
-  return entries
-    .filter(e => !e.name.startsWith('.'))
-    .map(e => ({
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true })
+    // 按类型排序：目录在前，文件在后，各按名称排序
+    const dirs = entries.filter(e => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))
+    const files = entries.filter(e => !e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))
+    return [...dirs, ...files].map(e => ({
       name: e.name,
-      isDirectory: e.isDirectory(),
       path: join(dirPath, e.name),
+      isDirectory: e.isDirectory(),
     }))
-    .sort((a, b) => {
-      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
+  } catch {
+    return []
+  }
 })
 
 ipcMain.handle('dir:ensure', async (_e, dirPath) => {
-  if (!existsSync(dirPath)) {
-    await mkdir(dirPath, { recursive: true })
-  }
-})
-
-ipcMain.handle('image:copy', async (_e, sourcePath, workspaceRoot) => {
-  const hash = createHash('md5')
-    .update(sourcePath + Date.now().toString())
-    .digest('hex')
-    .slice(0, 8)
-
-  const ext = sourcePath.split('.').pop()?.toLowerCase() || 'png'
-  const date = new Date().toISOString().slice(0, 10)
-  const filename = `${date}_${hash}.${ext}`
-  const assetsDir = join(workspaceRoot, 'assets', 'images')
-  const destPath = join(assetsDir, filename)
-
-  await mkdir(assetsDir, { recursive: true })
-  await copyFile(sourcePath, destPath)
-
-  const relativePath = `assets/images/${filename}`
-
-  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']
-  if (!imageExts.includes(ext)) {
-    return { success: true, relativePath, thumbnailPath: null }
-  }
-
-  const thumbDir = join(assetsDir, 'thumb')
-  await mkdir(thumbDir, { recursive: true })
-  const thumbPath = join(thumbDir, filename)
-
-  await copyFile(sourcePath, thumbPath)
-
-  return {
-    success: true,
-    relativePath,
-    thumbnailPath: `assets/images/thumb/${filename}`,
-    filename,
-  }
-})
-
-// 从 base64 写入图片
-ipcMain.handle('image:writeBase64', async (_e, workspaceRoot, base64Data, filename) => {
-  const hash = createHash('md5')
-    .update(filename + Date.now().toString())
-    .digest('hex')
-    .slice(0, 8)
-
-  const ext = filename.split('.').pop()?.toLowerCase() || 'png'
-  const date = new Date().toISOString().slice(0, 10)
-  const name = `${date}_${hash}.${ext}`
-
-  const assetsDir = join(workspaceRoot, 'assets', 'images')
-  const thumbDir = join(assetsDir, 'thumb')
-  await mkdir(assetsDir, { recursive: true })
-  await mkdir(thumbDir, { recursive: true })
-
-  const imgPath = join(assetsDir, name)
-  const buffer = Buffer.from(base64Data, 'base64')
-  await writeFile(imgPath, buffer)
-
-  let thumbnailPath = null
-  const imageExts = ['png', 'jpg', 'jpeg', 'webp']
-  if (imageExts.includes(ext)) {
-    try {
-      const img = nativeImage.createFromBuffer(buffer)
-      const size = img.getSize()
-      if (size.width > 480) {
-        const ratio = 480 / size.width
-        const thumb = img.resize({ width: 480, height: Math.round(size.height * ratio) })
-        const thumbBuffer = ext === 'png' ? thumb.toPNG() : thumb.toJPEG(85)
-        await writeFile(join(thumbDir, name), thumbBuffer)
-      } else {
-        await writeFile(join(thumbDir, name), buffer)
-      }
-      thumbnailPath = `assets/images/thumb/${name}`
-    } catch {
-      await writeFile(join(thumbDir, name), buffer)
-      thumbnailPath = `assets/images/thumb/${name}`
-    }
-  }
-
-  return {
-    success: true,
-    relativePath: `assets/images/${name}`,
-    thumbnailPath,
-    filename: name,
-  }
-})
-
-ipcMain.handle('app:getPath', async () => {
-  return app.getPath('documents')
-})
-
-// ===== 插件系统 =====
-ipcMain.handle('plugins:scan', async () => {
-  await mkdir(pluginsDir, { recursive: true })
-  const results = []
-  try {
-    const entries = await readdir(pluginsDir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      try {
-        const manifestRaw = await readFile(join(pluginsDir, entry.name, 'manifest.json'), 'utf-8')
-        const manifest = JSON.parse(manifestRaw)
-        results.push({
-          id: manifest.id || entry.name,
-          name: manifest.name || entry.name,
-          version: manifest.version || '0.0.0',
-          entry: manifest.entry || 'index.js',
-          description: manifest.description || '',
-        })
-      } catch {
-        // 跳过无效插件
-      }
-    }
-  } catch {
-    // 目录不存在或无法读取
-  }
-  return results
-})
-
-ipcMain.handle('plugins:openDir', async () => {
-  await mkdir(pluginsDir, { recursive: true })
-  shell.openPath(pluginsDir)
+  await mkdir(dirPath, { recursive: true })
+  return true
 })
 
 // 确认对话框（用于文件夹信任提示）
@@ -422,10 +303,150 @@ ipcMain.handle('dialog:confirm', async (_e, message, title) => {
     title: title || 'Confirm',
     message,
     buttons: ['Cancel', 'Trust'],
-    defaultId: 1,
+    defaultId: 0,
     cancelId: 0,
   })
   return result.response === 1
+})
+
+// 图片处理
+ipcMain.handle('image:copy', async (_e, sourcePath, workspaceRoot) => {
+  const imagesDir = join(workspaceRoot, 'assets', 'images')
+  const thumbsDir = join(workspaceRoot, 'assets', 'images', 'thumb')
+  await mkdir(imagesDir, { recursive: true })
+  await mkdir(thumbsDir, { recursive: true })
+
+  const hash = createHash('md5').update(sourcePath + Date.now()).digest('hex').slice(0, 8)
+  const ext = extname(sourcePath)
+  const filename = `${hash}${ext}`
+  const destPath = join(imagesDir, filename)
+
+  await copyFile(sourcePath, destPath)
+
+  // 生成缩略图（通过 nativeImage）
+  const img = nativeImage.createFromPath(destPath)
+  if (!img.isEmpty()) {
+    const thumb = img.resize({ width: 200 })
+    const thumbFilename = `${hash}_thumb${ext}`
+    await writeFile(join(thumbsDir, thumbFilename), thumb.toPNG())
+  }
+
+  return { filename, path: destPath }
+})
+
+ipcMain.handle('image:writeBase64', async (_e, workspaceRoot, base64Data, filename) => {
+  const imagesDir = join(workspaceRoot, 'assets', 'images')
+  const thumbsDir = join(workspaceRoot, 'assets', 'images', 'thumb')
+  await mkdir(imagesDir, { recursive: true })
+  await mkdir(thumbsDir, { recursive: true })
+
+  // 从 base64 解析格式
+  const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
+  const ext = matches ? `.${matches[1]}` : '.png'
+  const data = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(base64Data, 'base64')
+
+  const hash = createHash('md5').update(base64Data.slice(0, 100) + Date.now()).digest('hex').slice(0, 8)
+  const imageFilename = filename || `${hash}${ext}`
+  const destPath = join(imagesDir, imageFilename)
+
+  await writeFile(destPath, data)
+
+  // 缩略图
+  const img = nativeImage.createFromPath(destPath)
+  if (!img.isEmpty()) {
+    const thumb = img.resize({ width: 200 })
+    const thumbFilename = `${hash}_thumb${ext}`
+    await writeFile(join(thumbsDir, thumbFilename), thumb.toPNG())
+  }
+
+  return { filename: imageFilename, path: destPath }
+})
+
+// 系统路径
+ipcMain.handle('app:getPath', () => {
+  return app.getPath('documents')
+})
+
+// 语言切换 → 重建菜单
+ipcMain.on('language:changed', (_e, lang) => {
+  // 可在后续需要时重建 Electron 菜单
+})
+
+// 插件系统
+ipcMain.handle('plugins:openDir', async () => {
+  try {
+    await mkdir(pluginsDir, { recursive: true })
+    await shell.openPath(pluginsDir)
+  } catch {
+    // 静默失败
+  }
+})
+
+ipcMain.handle('plugins:scan', async () => {
+  try {
+    await mkdir(pluginsDir, { recursive: true })
+    const entries = await readdir(pluginsDir, { withFileTypes: true })
+    const plugins = []
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        // 先尝试 manifest.json（新版），再尝试 plugin.json（旧版兼容）
+        let manifest = null
+        for (const name of ['manifest.json', 'plugin.json']) {
+          const fp = join(pluginsDir, entry.name, name)
+          try {
+            manifest = JSON.parse(await readFile(fp, 'utf-8'))
+            break
+          } catch { /* try next */ }
+        }
+        if (manifest) {
+          plugins.push({
+            id: entry.name,
+            name: manifest.name || entry.name,
+            version: manifest.version || '0.0.0',
+            description: manifest.description || '',
+            entry: manifest.entry || manifest.main || 'index.js',
+          })
+        } else {
+          // 无任何 manifest 文件，尝试直接加载 index.js
+          plugins.push({
+            id: entry.name,
+            name: entry.name,
+            version: '0.0.0',
+            description: '',
+            entry: 'index.js',
+          })
+        }
+      }
+    }
+    return plugins
+  } catch {
+    return []
+  }
+})
+
+// ===== Title Bar 覆盖色更新 =====
+// ===== 窗口控制（Windows frameless 使用） =====
+ipcMain.handle('window:minimize', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (win) win.minimize()
+})
+
+ipcMain.handle('window:maximize', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (win) {
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  }
+})
+
+ipcMain.handle('window:close', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (win) win.close()
+})
+
+ipcMain.handle('window:isMaximized', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  return win ? win.isMaximized() : false
 })
 
 // ===== App Lifecycle =====
@@ -433,10 +454,7 @@ app.whenReady().then(() => {
   registerCustomProtocol()
   const win = createWindow()
 
-  // 处理启动时传入的文件/文件夹参数（拖拽到 exe 首次启动）
-  win.webContents.on('did-finish-load', () => {
-    processExternalArgs(process.argv, win)
-  })
+  // 由渲染进程主动拉取启动参数，避免 IPC 时序竞争
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

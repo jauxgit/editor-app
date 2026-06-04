@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { HighlightThemeId } from '../lib/highlightThemes'
 import type { Lang } from '../lib/i18n'
+import { editorThemes, getTheme, DEFAULT_THEME_ID } from '../lib/editorThemes'
 
 export type ViewMode = 'source' | 'preview' | 'split'
 
 interface EditorState {
   viewMode: ViewMode
-  theme: 'light' | 'dark'
+  /** Theme ID — see lib/editorThemes.ts for available themes */
+  theme: string
   showFileTree: boolean
   highlightTheme: HighlightThemeId
   language: Lang
@@ -17,7 +19,10 @@ interface EditorState {
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
-  toggleTheme: () => void
+  /** Switch to the next/prev theme (cycling through the available themes) */
+  cycleTheme: () => void
+  /** Set a specific theme by ID */
+  setTheme: (id: string) => void
   setHighlightTheme: (t: HighlightThemeId) => void
   setLanguage: (lang: Lang) => void
   setLastFilePath: (path: string | null) => void
@@ -28,10 +33,10 @@ interface EditorState {
 export const useEditorStore = create<EditorState>()(
   persist(
     (set) => ({
-      viewMode: 'preview',
-      theme: 'light',
+      viewMode: 'source',
+      theme: DEFAULT_THEME_ID,
       showFileTree: true,
-      highlightTheme: 'github-dark',
+      highlightTheme: 'github',
       language: 'en',
       lastFilePath: null,
       lastRootPath: null,
@@ -39,7 +44,16 @@ export const useEditorStore = create<EditorState>()(
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
-      toggleTheme: () => set(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      cycleTheme: () => set(s => {
+        const idx = editorThemes.findIndex(t => t.id === s.theme)
+        const next = (idx + 1) % editorThemes.length
+        const nextTheme = editorThemes[next]
+        return { theme: nextTheme.id, highlightTheme: nextTheme.highlightThemeId as any }
+      }),
+      setTheme: (id) => {
+        const theme = getTheme(id)
+        if (theme) set({ theme: id, highlightTheme: theme.highlightThemeId as any })
+      },
       setHighlightTheme: (t) => set({ highlightTheme: t }),
       setLanguage: (lang) => {
         set({ language: lang })

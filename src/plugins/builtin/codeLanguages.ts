@@ -1,22 +1,23 @@
-import type { MarkEditPlugin } from '../../lib/pluginRegistry'
-import { javascript } from '@codemirror/lang-javascript'
-import { python } from '@codemirror/lang-python'
-import { json } from '@codemirror/lang-json'
-import { css } from '@codemirror/lang-css'
-import { html } from '@codemirror/lang-html'
-import { java } from '@codemirror/lang-java'
-import { cpp } from '@codemirror/lang-cpp'
-import { go } from '@codemirror/lang-go'
-import { rust } from '@codemirror/lang-rust'
-import { php } from '@codemirror/lang-php'
-import { sql } from '@codemirror/lang-sql'
-import { xml } from '@codemirror/lang-xml'
-import { yaml } from '@codemirror/lang-yaml'
+import { cpp } from '@codemirror/lang-cpp';
+import { css } from '@codemirror/lang-css';
+import { go } from '@codemirror/lang-go';
+import { html } from '@codemirror/lang-html';
+import { java } from '@codemirror/lang-java';
+import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
+import { php } from '@codemirror/lang-php';
+import { python } from '@codemirror/lang-python';
+import { rust } from '@codemirror/lang-rust';
+import { sql } from '@codemirror/lang-sql';
+import { xml } from '@codemirror/lang-xml';
+import { yaml } from '@codemirror/lang-yaml';
+import type { MarkEditPlugin } from '../../lib/pluginRegistry';
 
 export function codeLanguagesPlugin(): MarkEditPlugin {
   return {
     id: 'core.code-languages',
     name: 'Code Block Languages',
+    description: 'Provides language support for code blocks',
     version: '1.0.0',
     codeLanguages: {
       javascript: javascript(),
@@ -83,5 +84,5 @@ export function codeLanguagesPlugin(): MarkEditPlugin {
       '.sh': javascript(),
       '.bash': javascript(),
     },
-  }
+  };
 }

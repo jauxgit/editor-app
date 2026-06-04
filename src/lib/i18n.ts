@@ -86,7 +86,8 @@ const messages: Record<Lang, Record<string, string>> = {
     // Command categories
     'cmd.category.view': 'View',
     'cmd.category.file': 'File',
-    'cmd.category.theme': 'Theme',
+    'cmd.category.highlight': 'Highlight Theme',
+    'cmd.category.editorTheme': 'Editor Theme',
     'cmd.category.language': 'Language',
 
     // Language names
@@ -103,6 +104,12 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
 
+    // Editor theme names
+    'editorTheme.warm-light': 'Warm Light',
+    'editorTheme.warm-dark': 'Warm Dark',
+    'editorTheme.nord': 'Nord',
+    'editorTheme.tokyo-night': 'Tokyo Night',
+    'editorTheme.paper': 'Paper',
     // TOC / Outline
     'toc.title': 'Outline',
 
@@ -172,6 +179,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
+    'fileTree.addFile': '新建文件',
 
     'cmdPalette.placeholder': '输入命令...',
     'cmdPalette.noResults': '无匹配命令',
@@ -192,7 +200,8 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'cmd.category.view': '视图',
     'cmd.category.file': '文件',
-    'cmd.category.theme': '主题',
+    'cmd.category.highlight': '高亮主题',
+    'cmd.category.editorTheme': '编辑器主题',
     'cmd.category.language': '语言',
 
     'language.en': 'English',
@@ -207,6 +216,12 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
 
+    // Editor theme names
+    'editorTheme.warm-light': '暖色亮白',
+    'editorTheme.warm-dark': '暖色暗黑',
+    'editorTheme.nord': '北欧极光',
+    'editorTheme.tokyo-night': '东京之夜',
+    'editorTheme.paper': '纸色书写',
     // TOC / Outline
     'toc.title': '目录',
 

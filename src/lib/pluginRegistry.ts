@@ -29,6 +29,21 @@ export interface MarkEditPlugin {
   /** 生命周期 */
   activate?: () => void | Promise<void>
   deactivate?: () => void | Promise<void>
+
+  /** 编辑区右键菜单项 */
+  contextMenuItems?: ContextMenuItem[]
+}
+
+/** 右键菜单项定义 */
+export interface ContextMenuItem {
+  id: string
+  label: string
+  /** 菜单分隔线 */
+  divider?: boolean
+  /** 快捷键提示文本 */
+  shortcut?: string
+  /** 点击执行 */
+  action: () => void
 }
 
 class PluginRegistry {
@@ -160,6 +175,16 @@ class PluginRegistry {
     return result
   }
 
+  /** 收集所有激活插件注册的右键菜单项 */
+  getContextMenuItems(): ContextMenuItem[] {
+    const result: ContextMenuItem[] = []
+    for (const id of this.activeIds) {
+      const p = this.plugins.get(id)
+      if (p?.contextMenuItems) result.push(...p.contextMenuItems)
+    }
+    return result
+  }
+
   /** 收集所有激活插件的 rehype 插件 */
   getRehypePlugins(): [Plugin, unknown?][] {
     const result: [Plugin, unknown?][] = []
@@ -211,9 +236,9 @@ class PluginRegistry {
           this.register({
             ...mod.default,
             id: m.id,
-            name: m.name || m.id,
-            version: m.version,
-            description: m.description,
+            name: m.name || mod.default.name || m.id,
+            version: m.version || mod.default.version || '0.0.0',
+            description: m.description || mod.default.description,
           })
           // 检查持久化状态：如果该插件在禁用列表，则停用它
           try {
