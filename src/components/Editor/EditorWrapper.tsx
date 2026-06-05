@@ -1,6 +1,6 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { highlightSelectionMatches, openSearchPanel, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
 import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
@@ -90,6 +90,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       closeBrackets(),
       warmSyntaxHighlight,
       keymap.of([
+        ...markdownKeymap,
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,

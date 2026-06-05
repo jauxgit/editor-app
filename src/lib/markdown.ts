@@ -17,9 +17,15 @@ const defaultProcessor = unified()
   .use(rehypeCodeLabels)
   .use(rehypeStringify, { allowDangerousHtml: false })
 
+/** 将单换行转换为 Markdown 软换行（`  \n` → `<br>`），保留段落分隔 `\n\n` */
+function preprocessSoftBreaks(md: string): string {
+  // 非代码块内的单 \n 替换为 空格+空格+\n（Markdown 软换行语法）
+  return md.replace(/(?<!\n)\n(?!\n)/g, '  \n')
+}
+
 /** Markdown → HTML（remark/rehype 管线，processSync） */
 export function renderMarkdown(md: string): string {
-  const result = defaultProcessor.processSync(md)
+  const result = defaultProcessor.processSync(preprocessSoftBreaks(md))
   return String(result)
 }
 
@@ -44,7 +50,7 @@ export function renderMarkdownWithPlugins(
   }
 
   processor = processor.use(rehypeStringify, { allowDangerousHtml: false })
-  const result = processor.processSync(md)
+  const result = processor.processSync(preprocessSoftBreaks(md))
   return String(result)
 }
 
