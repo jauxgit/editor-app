@@ -28,6 +28,7 @@ interface Props {
 export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const t = useT()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [animOpen, setAnimOpen] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [isMaximized, setIsMaximized] = useState(false)
 
@@ -67,6 +68,16 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
     setIsMaximized(prev => !prev)
   }
   const handleClose = () => window.electronAPI?.closeWindow()
+
+  // 下拉菜单开启动画：openMenu 变化 → 下一帧触发 visible
+  useEffect(() => {
+    if (openMenu) {
+      setAnimOpen(null)
+      requestAnimationFrame(() => setAnimOpen(openMenu))
+    } else {
+      setAnimOpen(null)
+    }
+  }, [openMenu])
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -225,7 +236,7 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
       items: [
         { id: 'plugin-manager', label: t('menu.pluginManager'), action: onOpenPluginManager },
         { id: 'sep8', divider: true },
-        { id: 'about', label: t('menu.about'), action: () => { /* TODO */ } },
+        { id: 'about', label: t('menu.about'), action: () => window.dispatchEvent(new CustomEvent('open-about')) },
       ],
     },
   ]
@@ -260,6 +271,7 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
       <div className="flex items-center h-full px-1 gap-0.5 flex-1 min-w-0">
         {menuGroups.map(menu => {
           const isOpen = openMenu === menu.id
+          const visible = animOpen === menu.id
           return (
             <div key={menu.id} className="relative" style={{ WebkitAppRegion: 'no-drag' }}>
               <button
@@ -276,13 +288,15 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
 
               {isOpen && (
                 <div
-                  className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg"
+                  className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg transition-all duration-150"
                   style={{
                     background: 'var(--bg-elevated)',
                     borderColor: 'var(--border)',
                     color: 'var(--text-primary)',
                     minWidth: '210px',
                     transformOrigin: 'top left',
+                    transform: visible ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.96)',
+                    opacity: visible ? 1 : 0,
                   }}
                 >
                   {menu.items.map(item =>
