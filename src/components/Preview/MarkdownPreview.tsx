@@ -43,7 +43,6 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     [content, registry.version]
   )
   const tocItems = useMemo(() => extractToc(html), [html])
-  const theme = useEditorStore(s => s.theme)
   const highlightTheme = useEditorStore(s => s.highlightTheme)
   const ref = useRef<HTMLDivElement>(null)
   const isSyncing = useRef(false)
@@ -57,13 +56,13 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
 
   // 同步滚动位置（来自编辑器）
   useEffect(() => {
-    if (!ref.current || scrollRatio === undefined) return
-    const el = ref.current
-    const max = el.scrollHeight - el.clientHeight
+    if (!ref.current || scrollRatio === undefined) return;
+    const el = ref.current;
+    const max = el.scrollHeight - el.clientHeight;
     if (max > 0) {
-      isSyncing.current = true
-      el.scrollTop = scrollRatio * max
-      requestAnimationFrame(() => { isSyncing.current = false })
+      isSyncing.current = true;
+      el.scrollTop = scrollRatio * max;
+      requestAnimationFrame(() => { isSyncing.current = false });
     }
   }, [scrollRatio])
 
@@ -111,24 +110,21 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     }
   }
 
-  const isDark = theme === 'dark'
-  const bg = isDark ? 'bg-gray-900' : 'bg-white'
-  const text = isDark ? 'text-gray-200' : 'text-gray-900'
 
   return (
-    <div className={`relative h-full ${bg} ${text}`}>
+    <div className="relative h-full">
       {/* TOC 浮动面板 — 在滚动容器外部，保持固定 */}
       {tocItems.length > 0 && (
         <div className="toc-panel">
           <button
-            className={`toc-toggle ${bg}`}
+            className="toc-toggle"
             onClick={() => setTocOpen(o => !o)}
             title={t('toc.title')}
           >
             {tocOpen ? '✕' : '☰'}
           </button>
           {tocOpen && (
-            <nav className={`toc-nav ${bg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <nav className="toc-nav">
               {tocItems.map(item => (
                 <a
                   key={item.id}

@@ -8,15 +8,29 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.file': 'File',
     'menu.edit': 'Edit',
     'menu.view': 'View',
+    'menu.newFile': 'New File',
     'menu.openFile': 'Open File...',
     'menu.openFolder': 'Open Folder...',
     'menu.save': 'Save',
+    'menu.closeTab': 'Close Tab',
+    'menu.exit': 'Exit',
     'menu.undo': 'Undo',
     'menu.redo': 'Redo',
     'menu.cut': 'Cut',
     'menu.copy': 'Copy',
     'menu.paste': 'Paste',
     'menu.selectAll': 'Select All',
+    'menu.find': 'Find',
+    'menu.replace': 'Replace',
+    'menu.toggleFileTree': 'Toggle File Tree',
+    'menu.sourceMode': 'Source Mode',
+    'menu.previewMode': 'Preview Mode',
+    'menu.splitMode': 'Split Mode',
+    'menu.toggleTheme': 'Toggle Theme',
+    'menu.commandPalette': 'Command Palette',
+    'menu.help': 'Help',
+    'menu.pluginManager': 'Plugin Manager',
+    'menu.about': 'About MarkEdit · 码记',
     'menu.toggleDevTools': 'Toggle DevTools',
     'menu.zoomIn': 'Zoom In',
     'menu.zoomOut': 'Zoom Out',
@@ -48,6 +62,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.title': 'Files',
     'fileTree.empty': 'Empty folder',
     'fileTree.hint': 'Open a folder to start',
+    'fileTree.addFile': 'New File',
 
     // Command palette
     'cmdPalette.placeholder': 'Type a command...',
@@ -62,14 +77,17 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.split': 'View: Split Mode',
     'cmd.view.toggleFileTree': 'View: Toggle File Tree',
     'cmd.view.toggleTheme': 'View: Toggle Dark/Light Theme',
+    'cmd.file.new': 'File: New File',
     'cmd.file.open': 'File: Open File',
     'cmd.file.openFolder': 'File: Open Folder',
     'cmd.file.save': 'File: Save',
+    'cmd.plugins.manager': 'Plugins: Manager',
 
     // Command categories
     'cmd.category.view': 'View',
     'cmd.category.file': 'File',
-    'cmd.category.theme': 'Theme',
+    'cmd.category.highlight': 'Highlight Theme',
+    'cmd.category.editorTheme': 'Editor Theme',
     'cmd.category.language': 'Language',
 
     // Language names
@@ -86,26 +104,59 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
 
+    // Editor theme names
+    'editorTheme.warm-light': 'Warm Light',
+    'editorTheme.warm-dark': 'Warm Dark',
+    'editorTheme.nord': 'Nord',
+    'editorTheme.tokyo-night': 'Tokyo Night',
+    'editorTheme.paper': 'Paper',
     // TOC / Outline
     'toc.title': 'Outline',
+
+    // Plugin Manager
+    'plugin.title': 'Plugin Manager',
+    'plugin.noPlugins': 'No plugins found.',
+    'plugin.help': 'Place plugins in the plugins/ directory.',
+    'plugin.openDir': 'Open Plugin Directory',
+    'plugin.refresh': 'Refresh',
+    'plugin.pluginsCount': '{n} plugins, {m} active',
 
     // Drag and drop
     'drag.trust.title': 'Trust Folder',
     'drag.trust.message': 'Do you trust this folder and allow MarkEdit to read all files within it?\n\n{folder}',
+
+    // About
+    'about.description': 'A desktop Markdown editor that blends Sublime Text\'s multi-cursor power with Obsidian\'s rich content rendering. Built for notes, code, and everything in between.',
+    'about.author': 'Developer & Designer',
+    'about.close': 'Close',
   },
   zh: {
     'menu.file': '文件',
     'menu.edit': '编辑',
     'menu.view': '查看',
+    'menu.newFile': '新建文件',
     'menu.openFile': '打开文件...',
     'menu.openFolder': '打开文件夹...',
     'menu.save': '保存',
+    'menu.closeTab': '关闭标签',
+    'menu.exit': '退出',
     'menu.undo': '撤销',
     'menu.redo': '重做',
     'menu.cut': '剪切',
     'menu.copy': '复制',
     'menu.paste': '粘贴',
     'menu.selectAll': '全选',
+    'menu.find': '查找',
+    'menu.replace': '替换',
+    'menu.toggleFileTree': '切换文件树',
+    'menu.sourceMode': '源码模式',
+    'menu.previewMode': '预览模式',
+    'menu.splitMode': '分屏模式',
+    'menu.toggleTheme': '切换主题',
+    'menu.commandPalette': '命令面板',
+    'menu.help': '帮助',
+    'menu.pluginManager': '插件管理',
+    'menu.about': '关于 MarkEdit · 码记',
     'menu.toggleDevTools': '开发者工具',
     'menu.zoomIn': '放大',
     'menu.zoomOut': '缩小',
@@ -132,6 +183,8 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.title': '文件',
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
+    'fileTree.addFile': '新建文件',
+    'fileTree.addFile': '新建文件',
 
     'cmdPalette.placeholder': '输入命令...',
     'cmdPalette.noResults': '无匹配命令',
@@ -144,13 +197,16 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.split': '视图: 分屏模式',
     'cmd.view.toggleFileTree': '视图: 切换文件树',
     'cmd.view.toggleTheme': '视图: 切换明暗主题',
+    'cmd.file.new': '文件: 新建文件',
     'cmd.file.open': '文件: 打开文件',
     'cmd.file.openFolder': '文件: 打开文件夹',
     'cmd.file.save': '文件: 保存',
+    'cmd.plugins.manager': '插件: 管理',
 
     'cmd.category.view': '视图',
     'cmd.category.file': '文件',
-    'cmd.category.theme': '主题',
+    'cmd.category.highlight': '高亮主题',
+    'cmd.category.editorTheme': '编辑器主题',
     'cmd.category.language': '语言',
 
     'language.en': 'English',
@@ -165,12 +221,31 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.github-dark-dimmed': 'GitHub Dark Dimmed',
     'theme.a11y-light': 'A11y Light',
 
+    // Editor theme names
+    'editorTheme.warm-light': '暖色亮白',
+    'editorTheme.warm-dark': '暖色暗黑',
+    'editorTheme.nord': '北欧极光',
+    'editorTheme.tokyo-night': '东京之夜',
+    'editorTheme.paper': '纸色书写',
     // TOC / Outline
     'toc.title': '目录',
+
+    // Plugin Manager
+    'plugin.title': '插件管理',
+    'plugin.noPlugins': '未找到插件。',
+    'plugin.help': '将插件放在 plugins/ 目录下。',
+    'plugin.openDir': '打开插件目录',
+    'plugin.refresh': '重新扫描',
+    'plugin.pluginsCount': '{n} 个插件，{m} 个已启用',
 
     // Drag and drop
     'drag.trust.title': '信任文件夹',
     'drag.trust.message': '是否信任此文件夹并允许 MarkEdit 读取其中的所有文件？\n\n{folder}',
+
+    // About
+    'about.description': '一款融合 Sublime Text 多光标编辑与 Obsidian 富内容渲染的桌面 Markdown 编辑器。专为笔记、代码和混合编辑而设计。',
+    'about.author': '开发者与设计师',
+    'about.close': '关闭',
   },
 }
 

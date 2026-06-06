@@ -1,14 +1,22 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
+import { createNewFile } from '../../lib/commands'
 import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { FileTree } from '../FileTree/FileTree'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
+import { PluginManager } from '../Settings/PluginManager'
+import { AboutDialog } from '../Settings/AboutDialog'
+import { TitleBar } from './TitleBar'
+import { getTheme, editorThemes } from '../../lib/editorThemes'
+import { applyHighlightTheme } from '../../lib/highlightThemes'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [pluginManagerOpen, setPluginManagerOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined)
   const t = useT()
   const tRef = useRef(t)
@@ -27,7 +35,9 @@ export function AppLayout() {
   const showFileTree = useEditorStore(s => s.showFileTree)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const theme = useEditorStore(s => s.theme)
-  const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const highlightTheme = useEditorStore(s => s.highlightTheme)
+  const cycleTheme = useEditorStore(s => s.cycleTheme)
+  const themeDef = getTheme(theme) || editorThemes[0]
 
   const activeTab = tabs.find(t => t.path === activeTabPath)
   const sidebarWidth = showFileTree ? '260px' : '0px'
@@ -35,10 +45,54 @@ export function AppLayout() {
   // 注册命令面板命令
   useRegisterCommands()
 
-  // 主题 class 切换
+  // 启动时检查是否有启动参数（从 Explorer 双击打开），否则恢复上次记录
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
+    const store = useEditorStore.getState()
+    const ws = useWorkspaceStore.getState()
+
+    ;(async () => {
+      // 优先处理启动参数（从 Explorer 双击打开的文件/文件夹）
+      const args = window.electronAPI ? await window.electronAPI.getStartupArgs() : []
+      if (args.length > 0) {
+        for (const arg of args) {
+          if (arg.type === 'file') {
+            ws.openFile(arg.path, arg.content || '')
+          } else if (arg.type === 'folder') {
+            ws.setRoot(arg.path)
+          }
+        }
+        return
+      }
+
+      // 无启动参数时恢复上次记录
+      if (store.lastRootPath) {
+        ws.setRoot(store.lastRootPath)
+      }
+
+      const lastPath = store.lastFilePath
+      if (lastPath && window.electronAPI) {
+        window.electronAPI.readFile(lastPath).then(({ content }) => {
+          ws.openFile(lastPath, content)
+        }).catch(() => {
+          useEditorStore.getState().setLastFilePath(null)
+        })
+      }
+    })()
+  }, [])
+
+  // 应用主题 CSS 变量
+  useEffect(() => {
+    const def = getTheme(theme) || editorThemes[0]
+    const root = document.documentElement
+    for (const [key, val] of Object.entries(def.vars)) {
+      root.style.setProperty(key, val)
+    }
   }, [theme])
+
+  // 注入 highlight.js 预览代码高亮 CSS（独立于 viewMode，确保始终跟随）
+  useEffect(() => {
+    applyHighlightTheme(highlightTheme)
+  }, [highlightTheme])
 
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -69,12 +123,40 @@ export function AppLayout() {
       }
       return
     }
+    // Cmd+N → 新建文件
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault()
+      const store = useWorkspaceStore.getState()
+      if (store.root) {
+        createNewFile(store.root).then(path => {
+          if (path) { store.openFile(path, ''); store.triggerRefresh() }
+        })
+      } else {
+        const id = nextUntitledId()
+        store.openUntitled(id)
+      }
+      return
+    }
   }, [setRoot, openFile])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // 命令面板/插件管理弹窗的自定义事件
+  useEffect(() => {
+    const handler = () => setPluginManagerOpen(true)
+    window.addEventListener('open-plugin-manager', handler)
+    return () => window.removeEventListener('open-plugin-manager', handler)
+  }, [])
+
+  // About 对话框事件
+  useEffect(() => {
+    const handler = () => setAboutOpen(true)
+    window.addEventListener('open-about', handler)
+    return () => window.removeEventListener('open-about', handler)
+  }, [])
 
   // 拖拽文件/文件夹到窗口
   useEffect(() => {
@@ -205,13 +287,7 @@ export function AppLayout() {
     })
   }, [openFile, setRoot])
 
-  // 主题颜色
-  const bg = theme === 'dark' ? 'bg-gray-950' : 'bg-white'
-  const borderColor = theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-  const tabBg = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
-  const tabActive = theme === 'dark' ? 'bg-gray-950' : 'bg-white'
-  const textDim = theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-  const textColor = theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+  const lineCount = activeTab?.content?.split('\n').length || 0
 
   const viewModeLabels: Record<string, string> = {
     source: t('toolbar.source'),
@@ -219,145 +295,218 @@ export function AppLayout() {
     split: t('toolbar.split'),
   }
 
-  const lineCount = activeTab?.content?.split('\n').length || 0
-
   return (
     <>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
+      <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
       {isDragOver && (
-        <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-indigo-500 ring-inset drag-over-overlay" />
+        <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
       )}
-      <div className={`h-full flex flex-col ${bg} ${textColor}`}>
-        {/* ===== 工具栏 ===== */}
-      <div className={`h-10 flex items-center px-3 gap-2 border-b ${borderColor} select-none shrink-0`}>
-        {/* 切换文件树 */}
-        <button
-          onClick={toggleFileTree}
-          className={`px-2 py-1 text-xs rounded ${textDim} hover:bg-gray-700/20 transition-colors`}
-          title={t('toolbar.toggleFileTree')}
-        >
-          {showFileTree ? '◧' : '◨'}
-        </button>
+      <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+        {/* ===== Menu Bar ===== */}
+        <TitleBar onOpenPalette={() => setPaletteOpen(true)} onOpenPluginManager={() => setPluginManagerOpen(true)} />
 
-        {/* 视图模式 */}
-        <div className="flex rounded overflow-hidden border border-gray-600/30">
-          {(['source', 'preview', 'split'] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-2 py-0.5 text-xs transition-colors ${
-                viewMode === mode
-                  ? 'bg-indigo-600 text-white'
-                  : `${textDim} hover:bg-gray-700/20`
-              }`}
-            >
-              {viewModeLabels[mode]}
-            </button>
-          ))}
-        </div>
-
-        {/* 工作区路径 */}
-        <span className="text-xs opacity-40 ml-2 truncate">
-          {root || t('toolbar.noFolderOpen')}
-        </span>
-
-        <div className="ml-auto flex items-center gap-2">
-          {/* 主题切换 */}
+        {/* ===== Toolbar ===== */}
+        <div className="flex items-center h-9 px-3 gap-2 border-b shrink-0 select-none" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+          {/* Toggle file tree */}
           <button
-            onClick={toggleTheme}
-            className={`px-2 py-1 text-xs rounded ${textDim} hover:bg-gray-700/20`}
+            onClick={toggleFileTree}
+            className="flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            title={t('toolbar.toggleFileTree')}
           >
-            {theme === 'dark' ? '☀' : '☾'}
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              {showFileTree
+                ? <><rect x="2" y="3" width="12" height="10" rx="1.5" /><line x1="6" y1="7" x2="10" y2="7" /></>
+                : <><rect x="2" y="3" width="12" height="10" rx="1.5" /><line x1="6" y1="7" x2="10" y2="7" /><line x1="8" y1="5" x2="8" y2="9" /></>
+              }
+            </svg>
           </button>
-        </div>
-      </div>
 
-      {/* ===== 主体区域 ===== */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 文件树 */}
-        <div
-          className={`shrink-0 border-r ${borderColor} overflow-hidden transition-all duration-200`}
-          style={{ width: sidebarWidth }}
-        >
-          {showFileTree && <FileTree />}
-        </div>
+          <div className="w-px h-4" style={{ background: 'var(--border)' }} />
 
-        {/* 编辑区 */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Tab 栏 */}
-          {tabs.length > 0 && (
-            <div className={`h-9 flex items-center ${tabBg} border-b ${borderColor} shrink-0 overflow-x-auto`}>
-              {tabs.map(tab => (
-                <div
-                  key={tab.path}
-                  onClick={() => setActiveTab(tab.path)}
-                  className={`group flex items-center gap-1.5 h-full px-3 text-xs cursor-pointer border-r ${borderColor} select-none shrink-0 transition-colors ${
-                    tab.path === activeTabPath
-                      ? `${tabActive} border-b-2 border-b-indigo-500 font-medium`
-                      : `${textDim} hover:bg-gray-700/10`
-                  }`}
-                >
-                  <span className="truncate max-w-40">
-                    {tab.isDirty ? '● ' : ''}{tab.name}
-                  </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); closeTab(tab.path) }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all text-base leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 编辑器 / 预览 */}
-          <div className="flex-1 flex overflow-hidden">
-            {activeTab ? (
-              <>
-                {/* 源码编辑器 */}
-                {(viewMode === 'source' || viewMode === 'split') && (
-                  <div className={`flex-1 min-w-0 ${viewMode === 'split' ? 'border-r ' + borderColor : ''}`}>
-                    <EditorWrapper
-                      docPath={activeTabPath!}
-                      onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
-                    />
-                  </div>
+          {/* View mode segmented control */}
+          <div className="flex rounded-md overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--bg-base)' }}>
+            {(['source', 'preview', 'split'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs transition-all duration-150"
+                style={{
+                  color: viewMode === mode ? 'var(--accent)' : 'var(--text-dim)',
+                  background: viewMode === mode ? 'var(--accent-muted)' : 'transparent',
+                  fontWeight: viewMode === mode ? 500 : 400,
+                }}
+              >
+                {mode === 'source' && (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4,5 1,8 4,11" /><polyline points="12,5 15,8 12,11" /><line x1="9" y1="4" x2="7" y2="12" />
+                  </svg>
                 )}
-
-                {/* 预览面板 */}
-                {(viewMode === 'preview' || viewMode === 'split') && (
-                  <div className="flex-1 min-w-0">
-                    <MarkdownPreview
-                      content={activeTab?.content || ''}
-                      scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
-                      onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
-                    />
-                  </div>
+                {mode === 'preview' && (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="12" height="10" rx="1.5" /><circle cx="8" cy="8" r="2" />
+                  </svg>
                 )}
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center opacity-30 text-sm select-none">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">📝</div>
-                  <p>{t('empty.hint')}</p>
-                </div>
-              </div>
-            )}
+                {mode === 'split' && (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="5.5" height="10" rx="1" /><rect x="8.5" y="3" width="5.5" height="10" rx="1" />
+                  </svg>
+                )}
+                {viewModeLabels[mode]}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-px h-4" style={{ borderColor: 'var(--border)' }} />
+
+          {/* Workspace path */}
+          <span className="text-xs truncate" style={{ color: 'var(--text-dim)' }}>
+            {root || t('toolbar.noFolderOpen')}
+          </span>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* Theme toggle — cycles through available themes */}
+            <button
+              onClick={cycleTheme}
+              className="flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              title={`${themeDef.name} — click to cycle`}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={themeDef.iconColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d={themeDef.iconPath} />
+              </svg>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* ===== 状态栏 ===== */}
-      <div className={`h-7 flex items-center px-3 gap-4 text-xs ${tabBg} border-t ${borderColor} select-none shrink-0 ${textDim}`}>
-        <span>
-          {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
-        </span>
-        <span>{viewModeLabels[viewMode]}</span>
-        <span className="ml-auto">{t('status.utf8')}</span>
-        <span>{t('status.markdown')}</span>
+        {/* ===== Main content area ===== */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* File Tree */}
+          <div
+            className="shrink-0 border-r overflow-hidden transition-all duration-200"
+            style={{ width: sidebarWidth, borderColor: 'var(--border)' }}
+          >
+            {showFileTree && <FileTree />}
+          </div>
+
+          {/* Editor area */}
+          <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--bg-base)' }}>
+            {/* Tab bar */}
+            {tabs.length > 0 && (
+              <div className="flex items-center h-9 border-b shrink-0 overflow-x-auto" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+                {tabs.map(tab => {
+                  const isActive = tab.path === activeTabPath
+                  return (
+                    <div
+                      key={tab.path}
+                      onClick={() => setActiveTab(tab.path)}
+                      className="group relative flex items-center gap-1.5 h-full px-3 text-xs cursor-pointer select-none shrink-0 transition-colors duration-150"
+                      style={{
+                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        background: isActive ? 'var(--bg-base)' : 'transparent',
+                        borderRight: '1px solid var(--border)',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                    >
+                      {/* Active tab indicator */}
+                      {isActive && (
+                        <span className="absolute inset-x-0 top-0 h-0.5" style={{ background: 'var(--accent)' }} />
+                      )}
+                      {/* Dirty indicator */}
+                      {tab.isDirty && (
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+                      )}
+                      <span className="truncate max-w-36">{tab.name}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); closeTab(tab.path) }}
+                        className="flex items-center justify-center w-4 h-4 rounded opacity-0 group-hover:opacity-100 transition-all text-xs leading-none hover:rotate-90"
+                        style={{ color: 'var(--text-dim)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Editor / Preview */}
+            <div className="flex-1 flex overflow-hidden">
+              {activeTab ? (
+                <>
+                  {/* Source editor */}
+                  {(viewMode === 'source' || viewMode === 'split') && (
+                    <div className="flex-1 min-w-0" style={viewMode === 'split' ? { borderRight: '1px solid var(--border)' } : undefined}>
+                      <EditorWrapper
+                        docPath={activeTabPath!}
+                        onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
+                      />
+                    </div>
+                  )}
+
+                  {/* Preview panel */}
+                  {(viewMode === 'preview' || viewMode === 'split') && (
+                    <div className="flex-1 min-w-0">
+                      <MarkdownPreview
+                        content={activeTab?.content || ''}
+                        scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
+                        onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center select-none">
+                  <div className="text-center max-w-md">
+                    <div className="mb-4 flex justify-center">
+                      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+                        <path d="M14 6H8a2 2 0 0 0-2 2v32a2 2 0 0 0 2 2h32a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-6" />
+                        <polyline points="14,6 14,12 24,12 34,12 34,6" />
+                        <line x1="16" y1="22" x2="32" y2="22" />
+                        <line x1="16" y1="28" x2="28" y2="28" />
+                        <line x1="16" y1="34" x2="24" y2="34" />
+                      </svg>
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{t('empty.hint')}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Status Bar ===== */}
+        <div
+          className="flex items-center h-7 px-3 gap-4 text-xs border-t select-none shrink-0"
+          style={{
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <span className="flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6">
+              <rect x="2" y="3" width="12" height="10" rx="1" />
+              <line x1="2" y1="8" x2="14" y2="8" />
+              <line x1="8" y1="3" x2="8" y2="13" />
+            </svg>
+            {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
+          </span>
+          <span>{viewModeLabels[viewMode]}</span>
+          <span className="ml-auto">{t('status.utf8')}</span>
+          <span>{t('status.markdown')}</span>
+        </div>
       </div>
-    </div>
     </>
   )
 }

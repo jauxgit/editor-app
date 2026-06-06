@@ -1,37 +1,73 @@
 import { create } from 'zustand'
+import { useEditorStore } from './editorStore'
 
 export interface TabInfo {
   path: string
   name: string
   content: string
   isDirty: boolean
+  isUntitled?: boolean
 }
 
 interface WorkspaceState {
   root: string | null
   openTabs: TabInfo[]
   activeTabPath: string | null
+  refreshSignal: number
 
   setRoot: (root: string) => void
   openFile: (path: string, content: string) => void
+  openUntitled: (path: string) => void
   closeTab: (path: string) => void
   setActiveTab: (path: string) => void
   updateContent: (path: string, content: string) => void
   markClean: (path: string) => void
+  updateTabPath: (oldPath: string, newPath: string) => void
+  triggerRefresh: () => void
+}
+
+let untitledSeq = 0
+
+export function nextUntitledId(): string {
+  untitledSeq++
+  return `untitled-${untitledSeq}`
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   root: null,
   openTabs: [],
   activeTabPath: null,
+  refreshSignal: 0,
 
-  setRoot: (root) => set({ root }),
+  setRoot: (root) => {
+    set({ root })
+    useEditorStore.getState().setLastRootPath(root)
+  },
 
   openFile: (path, content) => {
+    // 始终记录最近打开的文件路径
+    useEditorStore.getState().setLastFilePath(path)
+
+    // 如果文件不在当前根目录下，自动更新根目录
+    const currentRoot = get().root
+    const parentDir = path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')))
+    if (parentDir && parentDir !== currentRoot) {
+      // 只在文件不在当前根目录或其子目录下时才更新
+      if (!currentRoot || !path.startsWith(currentRoot + '/') && !path.startsWith(currentRoot + '\\')) {
+        get().setRoot(parentDir)
+      }
+    }
+
+    // 打开/切换到标签 — 已存在时更新内容，防止外部推送（如拖拽到 exe）使用过时内容
     const tabs = get().openTabs
     const existing = tabs.find(t => t.path === path)
     if (existing) {
-      set({ activeTabPath: path })
+      set({
+        activeTabPath: path,
+        openTabs: tabs.map(t =>
+          t.path === path ? { ...t, content, isDirty: false } : t
+        ),
+      })
       return
     }
     const name = path.split(/[/\\]/).pop() || path
@@ -69,4 +105,32 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
     })
   },
+
+  openUntitled: (path) => {
+    const tabs = get().openTabs
+    const existing = tabs.find(t => t.path === path)
+    if (existing) {
+      set({ activeTabPath: path })
+      return
+    }
+    set({
+      openTabs: [...tabs, { path, name: path, content: '', isDirty: true, isUntitled: true }],
+      activeTabPath: path,
+    })
+  },
+
+  updateTabPath: (oldPath, newPath) => {
+    const state = get()
+    const tab = state.openTabs.find(t => t.path === oldPath)
+    if (!tab) return
+    const name = newPath.split(/[/\\]/).pop() || newPath
+    set({
+      openTabs: state.openTabs.map(t =>
+        t.path === oldPath ? { ...t, path: newPath, name, isUntitled: false } : t
+      ),
+      activeTabPath: state.activeTabPath === oldPath ? newPath : state.activeTabPath,
+    })
+  },
+
+  triggerRefresh: () => set({ refreshSignal: get().refreshSignal + 1 }),
 }))

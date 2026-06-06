@@ -4,7 +4,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 文件操作 =====
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
-  saveDialog: () => ipcRenderer.invoke('file:saveDialog'),
+  saveDialog: (defaultPath) => ipcRenderer.invoke('file:saveDialog', defaultPath),
+  rename: (oldPath, newPath) => ipcRenderer.invoke('file:rename', oldPath, newPath),
+  deleteFile: (filePath) => ipcRenderer.invoke('file:delete', filePath),
+  deleteDir: (dirPath) => ipcRenderer.invoke('dir:delete', dirPath),
   openFileDialog: () => ipcRenderer.invoke('dialog:openFile'),
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
 
@@ -34,7 +37,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ===== 系统 =====
   getAppPath: () => ipcRenderer.invoke('app:getPath'),
+  getStartupArgs: () => ipcRenderer.invoke('app:getStartupArgs'),
+
+  // ===== 插件系统 =====
+  openPluginDir: () => ipcRenderer.invoke('plugins:openDir'),
+  scanPlugins: () => ipcRenderer.invoke('plugins:scan'),
 
   // ===== 语言切换 =====
   setLanguage: (lang) => ipcRenderer.send('language:changed', lang),
+
+  // ===== 窗口控制（Windows frameless） =====
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
 })

@@ -4,6 +4,9 @@ import { usePlugins } from '../../lib/pluginRegistry'
 import { useEditorStore } from '../../stores/editorStore'
 import { highlightThemes } from '../../lib/highlightThemes'
 import { useT } from '../../lib/i18n'
+import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
+import { createNewFile } from '../../lib/commands'
+import { editorThemes } from '../../lib/editorThemes'
 
 interface Props {
   isOpen: boolean
@@ -13,11 +16,20 @@ interface Props {
 export function CommandPalette({ isOpen, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const theme = useEditorStore(s => s.theme)
   const t = useT()
 
   const results: Command[] = commands.search(query)
+
+  // 开启动画
+  useEffect(() => {
+    if (isOpen) {
+      requestAnimationFrame(() => setVisible(true))
+    } else {
+      setVisible(false)
+    }
+  }, [isOpen])
 
   // 打开时聚焦输入框并重置
   useEffect(() => {
@@ -55,30 +67,32 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null
 
-  const overlay = theme === 'dark'
-    ? 'bg-black/60 backdrop-blur-sm'
-    : 'bg-black/30 backdrop-blur-sm'
-  const dialog = theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-gray-200'
-    : 'bg-white border-gray-200 text-gray-800'
-  const inputBg = theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-  const itemHover = theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-  const dimText = theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-  const activeBg = theme === 'dark' ? 'bg-indigo-600' : 'bg-indigo-500'
-  const activeText = 'text-white'
-
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-start justify-center pt-[15vh] ${overlay}`}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] transition-opacity duration-200"
+      style={{
+        background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+        backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+      }}
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden ${dialog}`}
+        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden transition-all duration-200"
+        style={{
+          background: 'var(--bg-elevated)',
+          borderColor: 'var(--border)',
+          color: 'var(--text-primary)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(-12px) scale(0.97)',
+          opacity: visible ? 1 : 0,
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* 搜索输入 */}
-        <div className="flex items-center px-4 py-3 border-b border-gray-700/20">
-          <span className={`mr-2 text-lg ${dimText}`}>›</span>
+        {/* Search input */}
+        <div className="flex items-center px-4 py-3.5 border-b" style={{ borderColor: 'var(--border)' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ color: 'var(--accent)', marginRight: 10, flexShrink: 0 }}>
+            <line x1="12.5" y1="12.5" x2="15" y2="15" />
+            <circle cx="7" cy="7" r="5.5" />
+          </svg>
           <input
             ref={inputRef}
             type="text"
@@ -86,23 +100,29 @@ export function CommandPalette({ isOpen, onClose }: Props) {
             onChange={e => { setQuery(e.target.value); setIndex(0) }}
             onKeyDown={handleKeyDown}
             placeholder={t('cmdPalette.placeholder')}
-            className={`flex-1 outline-none text-sm ${inputBg} placeholder:${dimText}`}
+            className="flex-1 outline-none text-sm bg-transparent"
+            style={{ color: 'var(--text-primary)' }}
             spellCheck={false}
           />
           {query && (
             <button
               onClick={() => { setQuery(''); setIndex(0) }}
-              className={`ml-2 text-xs ${dimText} hover:opacity-70`}
+              className="flex items-center justify-center w-5 h-5 rounded text-xs transition-colors"
+              style={{ color: 'var(--text-dim)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              ✕
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+              </svg>
             </button>
           )}
         </div>
 
-        {/* 结果列表 */}
-        <div className="max-h-72 overflow-y-auto py-2">
+        {/* Results list */}
+        <div className="max-h-72 overflow-y-auto py-1.5">
           {results.length === 0 ? (
-            <div className={`px-4 py-6 text-center text-sm ${dimText}`}>
+            <div className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-dim)' }}>
               {t('cmdPalette.noResults')}
             </div>
           ) : (
@@ -111,15 +131,18 @@ export function CommandPalette({ isOpen, onClose }: Props) {
                 key={cmd.id}
                 onClick={() => { cmd.action(); onClose() }}
                 onMouseEnter={() => setIndex(i)}
-                className={`flex items-center justify-between px-4 py-2 cursor-pointer text-sm transition-colors ${
-                  i === index
-                    ? `${activeBg} ${activeText}`
-                    : `hover:${itemHover}`
-                }`}
+                className="flex items-center justify-between px-4 py-2 cursor-pointer text-sm transition-colors duration-75"
+                style={{
+                  background: i === index ? 'var(--accent-muted)' : 'transparent',
+                  color: i === index ? 'var(--accent)' : 'var(--text-primary)',
+                }}
               >
                 <span>{cmd.label}</span>
                 {cmd.category && (
-                  <span className={`text-xs ${i === index ? 'opacity-70' : dimText}`}>
+                  <span
+                    className="text-xs ml-4 shrink-0"
+                    style={{ color: i === index ? 'var(--accent)' : 'var(--text-dim)', opacity: i === index ? 0.8 : 1 }}
+                  >
                     {cmd.category}
                   </span>
                 )}
@@ -128,11 +151,23 @@ export function CommandPalette({ isOpen, onClose }: Props) {
           )}
         </div>
 
-        {/* 提示 */}
-        <div className={`px-4 py-1.5 border-t border-gray-700/20 text-xs ${dimText} flex gap-4`}>
-          <span>{t('cmdPalette.navigate')}</span>
-          <span>{t('cmdPalette.execute')}</span>
-          <span>{t('cmdPalette.close')}</span>
+        {/* Footer hints */}
+        <div
+          className="flex items-center gap-4 px-4 py-2 border-t text-xs"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-dim)', background: 'var(--bg-surface)' }}
+        >
+          <span className="flex items-center gap-1">
+            <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>↑↓</kbd>
+            {t('cmdPalette.navigate')}
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>↵</kbd>
+            {t('cmdPalette.execute')}
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>Esc</kbd>
+            {t('cmdPalette.close')}
+          </span>
         </div>
       </div>
     </div>
@@ -145,21 +180,41 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 export function useRegisterCommands() {
   const setViewMode = useEditorStore(s => s.setViewMode)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
-  const toggleTheme = useEditorStore(s => s.toggleTheme)
+  const setTheme = useEditorStore(s => s.setTheme)
   const setHighlightTheme = useEditorStore(s => s.setHighlightTheme)
   const setLanguage = useEditorStore(s => s.setLanguage)
   const language = useEditorStore(s => s.language)
   const t = useT()
   const registry = usePlugins()
+  const root = useWorkspaceStore(s => s.root)
+  const openFile = useWorkspaceStore(s => s.openFile)
 
   useEffect(() => {
     commands.clear()
     commands.registerAll([
+      { id: 'plugins.manager', label: t('cmd.plugins.manager'), category: 'Plugins', action: () => {
+        window.dispatchEvent(new CustomEvent('open-plugin-manager'))
+      }},
+      { id: 'file.new', label: t('cmd.file.new'), category: t('cmd.category.file'), action: async () => {
+        const store = useWorkspaceStore.getState()
+        if (store.root) {
+          const path = await createNewFile(store.root)
+          if (path) { store.openFile(path, ''); store.triggerRefresh() }
+        } else {
+          store.openUntitled(nextUntitledId())
+        }
+      }},
       { id: 'view.source', label: t('cmd.view.source'), category: t('cmd.category.view'), action: () => setViewMode('source') },
       { id: 'view.preview', label: t('cmd.view.preview'), category: t('cmd.category.view'), action: () => setViewMode('preview') },
       { id: 'view.split', label: t('cmd.view.split'), category: t('cmd.category.view'), action: () => setViewMode('split') },
       { id: 'view.toggle-file-tree', label: t('cmd.view.toggleFileTree'), category: t('cmd.category.view'), action: toggleFileTree },
-      { id: 'view.toggle-theme', label: t('cmd.view.toggleTheme'), category: t('cmd.category.view'), action: toggleTheme },
+      // 编辑器主题：每个主题一条命令
+      ...editorThemes.map(et => ({
+        id: `theme.editor.${et.id}`,
+        label: t(`editorTheme.${et.id}`),
+        category: t('cmd.category.editorTheme'),
+        action: () => setTheme(et.id),
+      })),
       { id: 'file.open', label: t('cmd.file.open'), category: t('cmd.category.file'), action: () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, metaKey: true }))
       }},
@@ -171,8 +226,8 @@ export function useRegisterCommands() {
       }},
       ...highlightThemes.map(theme => ({
         id: `theme.highlight.${theme.id}`,
-        label: `${t('cmd.category.theme')}: ${t(`theme.${theme.id}`)}`,
-        category: t('cmd.category.theme'),
+        label: `${t('cmd.category.highlight')}: ${t(`theme.${theme.id}`)}`,
+        category: t('cmd.category.highlight'),
         action: () => setHighlightTheme(theme.id),
       })),
       { id: 'language.en', label: `${t('cmd.category.language')}: ${t('language.en')}`, category: t('cmd.category.language'), action: () => setLanguage('en') },
@@ -180,5 +235,5 @@ export function useRegisterCommands() {
       // 插件命令
       ...registry.getAllCommands(),
     ])
-  }, [setViewMode, toggleFileTree, toggleTheme, setHighlightTheme, setLanguage, language, t, registry.version])
+  }, [setViewMode, toggleFileTree, setTheme, setHighlightTheme, setLanguage, language, t, registry.version])
 }
