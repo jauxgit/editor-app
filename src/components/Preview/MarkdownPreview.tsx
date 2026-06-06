@@ -56,13 +56,13 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
 
   // 同步滚动位置（来自编辑器）
   useEffect(() => {
-    if (!ref.current || scrollRatio === undefined) return
-    const el = ref.current
-    const max = el.scrollHeight - el.clientHeight
+    if (!ref.current || scrollRatio === undefined) return;
+    const el = ref.current;
+    const max = el.scrollHeight - el.clientHeight;
     if (max > 0) {
-      isSyncing.current = true
-      el.scrollTop = scrollRatio * max
-      requestAnimationFrame(() => { isSyncing.current = false })
+      isSyncing.current = true;
+      el.scrollTop = scrollRatio * max;
+      requestAnimationFrame(() => { isSyncing.current = false });
     }
   }, [scrollRatio])
 
