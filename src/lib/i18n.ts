@@ -124,6 +124,11 @@ const messages: Record<Lang, Record<string, string>> = {
     // Drag and drop
     'drag.trust.title': 'Trust Folder',
     'drag.trust.message': 'Do you trust this folder and allow MarkEdit to read all files within it?\n\n{folder}',
+
+    // About
+    'about.description': 'A desktop Markdown editor that blends Sublime Text\'s multi-cursor power with Obsidian\'s rich content rendering. Built for notes, code, and everything in between.',
+    'about.author': 'Developer & Designer',
+    'about.close': 'Close',
   },
   zh: {
     'menu.file': '文件',
@@ -236,6 +241,11 @@ const messages: Record<Lang, Record<string, string>> = {
     // Drag and drop
     'drag.trust.title': '信任文件夹',
     'drag.trust.message': '是否信任此文件夹并允许 MarkEdit 读取其中的所有文件？\n\n{folder}',
+
+    // About
+    'about.description': '一款融合 Sublime Text 多光标编辑与 Obsidian 富内容渲染的桌面 Markdown 编辑器。专为笔记、代码和混合编辑而设计。',
+    'about.author': '开发者与设计师',
+    'about.close': '关闭',
   },
 }
 

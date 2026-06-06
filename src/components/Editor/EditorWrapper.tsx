@@ -1,6 +1,6 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { highlightSelectionMatches, openSearchPanel, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
 import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
@@ -90,6 +90,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       closeBrackets(),
       warmSyntaxHighlight,
       keymap.of([
+        ...markdownKeymap,
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
@@ -205,18 +206,30 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, [docPath, tab, saveCurrentFile]);
 
-  // 滚动位置同步
+  // 滚动位置同步 — rAF 轮询检测滚动变化
   useEffect(() => {
-    if (!onScrollChange || !editorRef.current) return;
-    const scroller = editorRef.current.querySelector('.cm-scroller');
+    if (!onScrollChange) return;
+    if (!editorRef.current) return;
+
+    const scroller = editorRef.current.querySelector('.cm-scroller') as HTMLElement | null;
     if (!scroller) return;
-    const handler = () => {
-      const max = scroller.scrollHeight - scroller.clientHeight;
-      if (max > 0) onScrollChange(scroller.scrollTop / max);
+
+    let lastTop = scroller.scrollTop;
+    let rafId: number;
+
+    const poll = () => {
+      const currentTop = scroller.scrollTop;
+      if (currentTop !== lastTop) {
+        lastTop = currentTop;
+        const max = scroller.scrollHeight - scroller.clientHeight;
+        if (max > 0) onScrollChange(currentTop / max);
+      }
+      rafId = requestAnimationFrame(poll);
     };
-    scroller.addEventListener('scroll', handler, { passive: true });
-    return () => scroller.removeEventListener('scroll', handler);
-  }, [onScrollChange, docPath]);
+    rafId = requestAnimationFrame(poll);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [onScrollChange, docPath, registry.version]);
 
   // 监听图片双击事件
   useEffect(() => {
@@ -251,7 +264,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
 
   return (
     <>
-      <div ref={editorRef} className="h-full w-full" style={{ overflow: 'auto' }} />
+      <div ref={editorRef} className="h-full w-full" />
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x}

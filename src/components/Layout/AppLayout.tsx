@@ -8,6 +8,7 @@ import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
 import { PluginManager } from '../Settings/PluginManager'
+import { AboutDialog } from '../Settings/AboutDialog'
 import { TitleBar } from './TitleBar'
 import { getTheme, editorThemes } from '../../lib/editorThemes'
 import { applyHighlightTheme } from '../../lib/highlightThemes'
@@ -15,6 +16,7 @@ import { applyHighlightTheme } from '../../lib/highlightThemes'
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined)
   const t = useT()
   const tRef = useRef(t)
@@ -147,6 +149,13 @@ export function AppLayout() {
     const handler = () => setPluginManagerOpen(true)
     window.addEventListener('open-plugin-manager', handler)
     return () => window.removeEventListener('open-plugin-manager', handler)
+  }, [])
+
+  // About 对话框事件
+  useEffect(() => {
+    const handler = () => setAboutOpen(true)
+    window.addEventListener('open-about', handler)
+    return () => window.removeEventListener('open-about', handler)
   }, [])
 
   // 拖拽文件/文件夹到窗口
@@ -290,6 +299,7 @@ export function AppLayout() {
     <>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
+      <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
       {isDragOver && (
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
       )}
