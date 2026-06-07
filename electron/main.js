@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, net, protocol, shell } from 'electron'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readFile, writeFile, readdir, mkdir, copyFile, rename, unlink, rm } from 'node:fs/promises'
@@ -464,6 +464,69 @@ ipcMain.handle('window:close', () => {
 ipcMain.handle('window:isMaximized', () => {
   const win = BrowserWindow.getFocusedWindow()
   return win ? win.isMaximized() : false
+})
+
+// ===== 下载更新 =====
+ipcMain.handle('download:start', async (event, { url, filename }) => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (!win) return { success: false, reason: 'no_window' }
+
+  const { filePath, canceled } = await dialog.showSaveDialog(win, {
+    defaultPath: filename || 'MarkEdit.Setup.exe',
+    filters: [{ name: 'Installer', extensions: ['exe'] }],
+  })
+
+  if (canceled || !filePath) return { success: false, reason: 'canceled' }
+
+  try {
+    const response = await net.fetch(url)
+    if (!response.ok || !response.body) {
+      return { success: false, reason: `HTTP ${response.status}` }
+    }
+
+    const total = parseInt(response.headers.get('content-length') || '0', 10)
+    let downloaded = 0
+    const chunks = []
+
+    const reader = response.body.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (value) {
+        chunks.push(value)
+        downloaded += value.length
+        if (total > 0) {
+          win.webContents.send('download:progress', {
+            received: downloaded,
+            total,
+            percent: Math.round((downloaded / total) * 100),
+          })
+        }
+      }
+    }
+
+    // 写入文件
+    const totalLength = chunks.reduce((s, c) => s + c.length, 0)
+    const buffer = Buffer.alloc(totalLength)
+    let offset = 0
+    for (const chunk of chunks) {
+      buffer.set(chunk, offset)
+      offset += chunk.length
+    }
+    await writeFile(filePath, buffer)
+
+    win.webContents.send('download:progress', {
+      done: true,
+      filePath,
+      received: totalLength,
+      total: totalLength,
+      percent: 100,
+    })
+
+    return { success: true, filePath }
+  } catch (err) {
+    return { success: false, reason: err.message }
+  }
 })
 
 // ===== App Lifecycle =====

@@ -44,6 +44,10 @@ export interface ElectronAPI {
   getStartupArgs: () => Promise<{ type: 'file' | 'folder'; path: string; content?: string }[]>
   openPluginDir: () => Promise<void>
   scanPlugins: () => Promise<PluginManifest[]>
+  // 下载更新
+  startDownload: (url: string, filename?: string) => Promise<{ success: boolean; filePath?: string; reason?: string }>
+  onDownloadProgress: (callback: (data: { received: number; total: number; percent: number; done?: boolean; filePath?: string }) => void) => void
+
   // 窗口控制（Windows frameless）
   minimizeWindow: () => Promise<void>
   maximizeWindow: () => Promise<void>
