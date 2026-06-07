@@ -471,12 +471,13 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
   const win = BrowserWindow.getFocusedWindow()
   if (!win) return { success: false, reason: 'no_window' }
 
-  const { filePath, canceled } = await dialog.showSaveDialog(win, {
-    defaultPath: filename || 'MarkEdit.Setup.exe',
-    filters: [{ name: 'Installer', extensions: ['exe'] }],
-  })
+  // 下载到用户数据目录的 updates 子目录
+  const updatesDir = join(app.getPath('userData'), 'updates')
+  await mkdir(updatesDir, { recursive: true })
+  const filePath = join(updatesDir, filename || 'MarkEdit.Setup.exe')
 
-  if (canceled || !filePath) return { success: false, reason: 'canceled' }
+  // 清理上次残留的安装包
+  try { await unlink(filePath) } catch { /* 不存在则忽略 */ }
 
   try {
     const response = await net.fetch(url)
@@ -497,8 +498,7 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
         downloaded += value.length
         if (total > 0) {
           win.webContents.send('download:progress', {
-            received: downloaded,
-            total,
+            received: downloaded, total,
             percent: Math.round((downloaded / total) * 100),
           })
         }
@@ -509,18 +509,15 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
     const totalLength = chunks.reduce((s, c) => s + c.length, 0)
     const buffer = Buffer.alloc(totalLength)
     let offset = 0
-    for (const chunk of chunks) {
-      buffer.set(chunk, offset)
-      offset += chunk.length
-    }
+    for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.length }
     await writeFile(filePath, buffer)
 
+    // 下载完成 -> 启动安装程序
+    shell.openPath(filePath)
+
     win.webContents.send('download:progress', {
-      done: true,
-      filePath,
-      received: totalLength,
-      total: totalLength,
-      percent: 100,
+      done: true, filePath,
+      received: totalLength, total: totalLength, percent: 100,
     })
 
     return { success: true, filePath }
