@@ -129,6 +129,12 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.description': 'A desktop Markdown editor that blends Sublime Text\'s multi-cursor power with Obsidian\'s rich content rendering. Built for notes, code, and everything in between.',
     'about.author': 'Developer & Designer',
     'about.close': 'Close',
+    'about.checkUpdate': 'Check for Updates',
+    'about.checking': 'Checking...',
+    'about.latest': 'Already up to date (v{version})',
+    'about.updateAvailable': 'New version v{latest} available',
+    'about.download': 'Download',
+    'about.checkFailed': 'Check failed, please try again',
   },
   zh: {
     'menu.file': '文件',
@@ -246,6 +252,12 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.description': '一款融合 Sublime Text 多光标编辑与 Obsidian 富内容渲染的桌面 Markdown 编辑器。专为笔记、代码和混合编辑而设计。',
     'about.author': '开发者与设计师',
     'about.close': '关闭',
+    'about.checkUpdate': '检查更新',
+    'about.checking': '正在检查...',
+    'about.latest': '已是最新版本 (v{version})',
+    'about.updateAvailable': '发现新版本 v{latest}',
+    'about.download': '下载',
+    'about.checkFailed': '检查失败，请重试',
   },
 }
 

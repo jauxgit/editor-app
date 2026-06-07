@@ -55,6 +55,8 @@ declare global {
   interface Window {
     electronAPI?: ElectronAPI
   }
+  /** 注入自 package.json 的版本号，由 Vite define 在构建时替换 */
+  const __APP_VERSION__: string
 }
 
 export {}
