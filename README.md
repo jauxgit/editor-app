@@ -9,6 +9,7 @@
 ## 功能特性
 
 ### 编辑器核心
+
 - **CodeMirror 6** 编辑器内核 — 原生多光标编辑、Widget 扩展
 - **多光标编辑**：Cmd+D 选词、Alt+↑↓ 添加上/下游标、列选择模式
 - **Markdown 语法高亮** — 实时编辑区高亮 + 预览区完整渲染
@@ -18,13 +19,15 @@
 - **图片拖入/粘贴** — 自动写入文件系统并内联渲染
 
 ### 视图模式
-| 模式 | 说明 |
-|------|------|
-| 源码 | 纯编辑视图，专注写作 |
+
+| 模式 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| 源码 | 纯编辑视图，专注写作                                  |
 | 预览 | 渲染后的 Markdown 预览（含代码高亮 + 语言标签 + TOC） |
-| 分屏 | 编辑 + 预览同步滚动 |
+| 分屏 | 编辑 + 预览同步滚动                                   |
 
 ### 界面
+
 - **5 套完整主题**：Warm Light / Warm Dark / Nord / Tokyo Night / Paper，每套含完整 CSS 变量 + 语法高亮色
 - **自定义 CM6 编辑器主题** — 暖色语法高亮，CSS 变量驱动
 - **8 种 highlight.js 预览高亮主题** — 与编辑器主题自动联动
@@ -38,6 +41,7 @@
 - **中英文界面切换**
 
 ### 文件系统
+
 - **拖拽文件/文件夹**到窗口直接打开
 - **拖拽文件/文件夹**到 exe 冷/热启动
 - **单实例锁** — 防重复启动，拖到 exe 的文件路由到已有窗口
@@ -45,6 +49,7 @@
 - **新建文件**（有目录直接创建 / 无目录 untitled+另存为）
 
 ### 插件系统
+
 - **PluginRegistry 插件注册表** — 统一管理 CM6 扩展、代码语言、remark/rehype 插件
 - **外置插件热加载** — 通过自定义协议 `markedit://` 加载用户数据目录下的插件
 - **右键菜单扩展** — 插件可注册自定义菜单项
@@ -54,18 +59,18 @@
 
 ## 技术栈
 
-| 层 | 技术 |
-|---|------|
-| 桌面框架 | Electron 42 |
-| 编辑器内核 | CodeMirror 6（原生多光标、Widget 扩展） |
-| UI 框架 | React 19 + TypeScript |
-| 样式 | Tailwind CSS 4 |
-| 状态管理 | Zustand（persist 中间件持久化设置） |
+| 层            | 技术                                                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 桌面框架      | Electron 42                                                                                                                 |
+| 编辑器内核    | CodeMirror 6（原生多光标、Widget 扩展）                                                                                     |
+| UI 框架       | React 19 + TypeScript                                                                                                       |
+| 样式          | Tailwind CSS 4                                                                                                              |
+| 状态管理      | Zustand（persist 中间件持久化设置）                                                                                         |
 | Markdown 解析 | remark/rehype 管线（`unified` + `remark-parse` + `remark-gfm` + `remark-rehype` + `rehype-highlight` + `rehype-stringify`） |
-| 语法高亮 | CM6 Lezer（10+ 语言包）+ highlight.js（预览区） |
-| 国际化 | 自定义轻量 i18n 模块 |
-| 打包 | Vite 8 + electron-builder 26 |
-| 字体 | IBM Plex Sans（UI）+ JetBrains Mono（代码） |
+| 语法高亮      | CM6 Lezer（10+ 语言包）+ highlight.js（预览区）                                                                             |
+| 国际化        | 自定义轻量 i18n 模块                                                                                                        |
+| 打包          | Vite 8 + electron-builder 26                                                                                                |
+| 字体          | IBM Plex Sans（UI）+ JetBrains Mono（代码）                                                                                 |
 
 ---
 
@@ -140,8 +145,6 @@ release/
 - **Zustand persist** — `partialize` 持久化主题、语言等用户设置，`viewMode` 不持久化（默认源码模式）
 - **滚动同步** — 使用 `requestAnimationFrame` 轮询而非 `scroll` 事件监听，避免 StrictMode 下 DOM 重建导致的事件丢失
 - **插件系统** — `PluginRegistry` 单例模式，与 `CommandRegistry` 一致的全局单例
-
-详细踩坑记录见 [CLAUDE.md](./CLAUDE.md)。
 
 ---
 
