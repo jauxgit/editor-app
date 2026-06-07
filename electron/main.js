@@ -160,6 +160,23 @@ function createWindow() {
 
   Menu.setApplicationMenu(null)
 
+  // ===== 外部链接处理：强制使用系统默认浏览器打开 =====
+  const handleExternalNav = (url) => {
+    const internalPrefixes = ['http://localhost:5173', 'markedit://', 'file://']
+    if (internalPrefixes.some(p => url.startsWith(p))) return false
+    shell.openExternal(url)
+    return true
+  }
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (handleExternalNav(url)) event.preventDefault()
+  })
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    handleExternalNav(url)
+    return { action: 'deny' }
+  })
+
   return win
 }
 
