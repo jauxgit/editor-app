@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { HighlightThemeId } from '../lib/highlightThemes'
 import type { Lang } from '../lib/i18n'
 import { editorThemes, getTheme, DEFAULT_THEME_ID } from '../lib/editorThemes'
+import { DEFAULT_FONT_ID } from '../lib/editorFonts'
 
 export type ViewMode = 'source' | 'preview' | 'split'
 
@@ -16,6 +17,8 @@ interface EditorState {
   lastFilePath: string | null
   lastRootPath: string | null
   disabledPlugins: string[]
+  /** Font preset ID — see lib/editorFonts.ts for available fonts */
+  font: string
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
@@ -28,6 +31,7 @@ interface EditorState {
   setLastFilePath: (path: string | null) => void
   setLastRootPath: (path: string | null) => void
   togglePlugin: (id: string) => void
+  setFont: (id: string) => void
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -41,6 +45,7 @@ export const useEditorStore = create<EditorState>()(
       lastFilePath: null,
       lastRootPath: null,
       disabledPlugins: [],
+      font: DEFAULT_FONT_ID,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
@@ -70,6 +75,7 @@ export const useEditorStore = create<EditorState>()(
         else disabled.push(id)
         return { disabledPlugins: disabled }
       }),
+      setFont: (id) => set({ font: id }),
     }),
     {
       name: 'markedit-settings',
@@ -81,6 +87,7 @@ export const useEditorStore = create<EditorState>()(
         lastFilePath: state.lastFilePath,
         lastRootPath: state.lastRootPath,
         disabledPlugins: state.disabledPlugins,
+        font: state.font,
       }),
     }
   )

@@ -88,6 +88,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.category.file': 'File',
     'cmd.category.highlight': 'Highlight Theme',
     'cmd.category.editorTheme': 'Editor Theme',
+    'cmd.category.font': 'Editor Font',
     'cmd.category.language': 'Language',
 
     // Language names
@@ -110,6 +111,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'editorTheme.nord': 'Nord',
     'editorTheme.tokyo-night': 'Tokyo Night',
     'editorTheme.paper': 'Paper',
+    // Editor Fonts
+    'editorFont.default': 'Default (IBM Plex + JetBrains Mono)',
+    'editorFont.fira': 'Inter + Fira Code',
+    'editorFont.cascadia': 'Cascadia Code',
+    'editorFont.source': 'Source Sans + Source Code Pro',
+    'editorFont.system': 'System UI',
+    'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': 'Outline',
 
@@ -213,6 +221,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.category.file': '文件',
     'cmd.category.highlight': '高亮主题',
     'cmd.category.editorTheme': '编辑器主题',
+    'cmd.category.font': '编辑器字体',
     'cmd.category.language': '语言',
 
     'language.en': 'English',
@@ -233,6 +242,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'editorTheme.nord': '北欧极光',
     'editorTheme.tokyo-night': '东京之夜',
     'editorTheme.paper': '纸色书写',
+    // Editor Fonts
+    'editorFont.default': '默认 (IBM Plex + JetBrains Mono)',
+    'editorFont.fira': 'Inter + Fira Code',
+    'editorFont.cascadia': 'Cascadia Code',
+    'editorFont.source': 'Source Sans + Source Code Pro',
+    'editorFont.system': '系统默认',
+    'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': '目录',
 

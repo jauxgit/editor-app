@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useInsertionEffect } from 'react'
 import { renderMarkdownWithPlugins } from '../../lib/markdown'
 import { usePlugins } from '../../lib/pluginRegistry'
 import { useEditorStore } from '../../stores/editorStore'
+import { getFont } from '../../lib/editorFonts'
 import { applyHighlightTheme } from '../../lib/highlightThemes'
 import { useT } from '../../lib/i18n'
 
@@ -44,6 +45,7 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
   )
   const tocItems = useMemo(() => extractToc(html), [html])
   const highlightTheme = useEditorStore(s => s.highlightTheme)
+  const font = useEditorStore(s => s.font)
   const ref = useRef<HTMLDivElement>(null)
   const isSyncing = useRef(false)
   const [tocOpen, setTocOpen] = useState(false)
@@ -53,6 +55,14 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
   useInsertionEffect(() => {
     applyHighlightTheme(highlightTheme)
   }, [highlightTheme])
+
+  // 切换字体时直接应用到预览 DOM（内容重新渲染或视图切换后重新应用）
+  useEffect(() => {
+    if (!ref.current) return
+    const def = getFont(font)
+    if (!def) return
+    ref.current.style.setProperty('font-family', def.uiFont, 'important')
+  }, [font, html])
 
   // 同步滚动位置（来自编辑器）
   useEffect(() => {

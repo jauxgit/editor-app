@@ -19,6 +19,7 @@ import { setActiveEditorView } from '../../lib/commands';
 import { usePlugins } from '../../lib/pluginRegistry';
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
+import { getFont } from '../../lib/editorFonts';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index';
 import { useImageHandler } from './ImageDropHandler';
@@ -43,6 +44,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const root = useWorkspaceStore((s) => s.root);
   const tab = useWorkspaceStore((s) => s.openTabs.find((t) => t.path === docPath));
   const theme = useEditorStore((s) => s.theme);
+  const font = useEditorStore((s) => s.font);
   const registry = usePlugins();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; view: EditorView } | null>(null);
 
@@ -230,6 +232,20 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
 
     return () => cancelAnimationFrame(rafId);
   }, [onScrollChange, docPath, registry.version]);
+
+  // 切换字体时直接应用到编辑器 DOM（使用 !important 覆盖 CM6 内部样式）
+  // 依赖项与 init effect 保持一致，确保 EditorView 重建后重新应用字体
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const def = getFont(font);
+    if (!def) return;
+    const fontVal = def.monoFont;
+    view.dom.style.setProperty('font-family', fontVal, 'important');
+    if (view.contentDOM) {
+      view.contentDOM.style.setProperty('font-family', fontVal, 'important');
+    }
+  }, [font, docPath, theme, registry.version]);
 
   // 监听图片双击事件
   useEffect(() => {
