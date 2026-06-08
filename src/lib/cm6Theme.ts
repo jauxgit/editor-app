@@ -16,6 +16,7 @@ export const warmEditorTheme = EditorView.theme({
     backgroundColor: 'var(--bg-base)',
     color: 'var(--text-primary)',
     fontSize: '14.5px',
+    fontFamily: 'var(--font-mono)',
   },
   '.cm-gutters': {
     backgroundColor: 'var(--bg-surface)',

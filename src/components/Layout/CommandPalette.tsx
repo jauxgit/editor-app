@@ -7,6 +7,7 @@ import { useT } from '../../lib/i18n'
 import { useWorkspaceStore, nextUntitledId } from '../../stores/workspaceStore'
 import { createNewFile } from '../../lib/commands'
 import { editorThemes } from '../../lib/editorThemes'
+import { editorFonts } from '../../lib/editorFonts'
 
 interface Props {
   isOpen: boolean
@@ -182,6 +183,7 @@ export function useRegisterCommands() {
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const setTheme = useEditorStore(s => s.setTheme)
   const setHighlightTheme = useEditorStore(s => s.setHighlightTheme)
+  const setFont = useEditorStore(s => s.setFont)
   const setLanguage = useEditorStore(s => s.setLanguage)
   const language = useEditorStore(s => s.language)
   const t = useT()
@@ -215,6 +217,13 @@ export function useRegisterCommands() {
         category: t('cmd.category.editorTheme'),
         action: () => setTheme(et.id),
       })),
+      // 编辑器字体：每个预设一条命令
+      ...editorFonts.map(f => ({
+        id: `font.${f.id}`,
+        label: t(`editorFont.${f.id}`),
+        category: t('cmd.category.font'),
+        action: () => setFont(f.id),
+      })),
       { id: 'file.open', label: t('cmd.file.open'), category: t('cmd.category.file'), action: () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, metaKey: true }))
       }},
@@ -235,5 +244,5 @@ export function useRegisterCommands() {
       // 插件命令
       ...registry.getAllCommands(),
     ])
-  }, [setViewMode, toggleFileTree, setTheme, setHighlightTheme, setLanguage, language, t, registry.version])
+  }, [setViewMode, toggleFileTree, setTheme, setHighlightTheme, setFont, setLanguage, language, t, registry.version])
 }
