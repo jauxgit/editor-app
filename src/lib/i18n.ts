@@ -143,6 +143,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.updateAvailable': 'New version v{latest} available',
     'about.download': 'Download',
     'about.checkFailed': 'Check failed, please try again',
+    'about.downloading': 'Downloading... {percent}%',
+    'about.downloadComplete': 'Download complete',
+    'about.openFile': 'Open File',
   },
   zh: {
     'menu.file': '文件',
@@ -274,6 +277,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.updateAvailable': '发现新版本 v{latest}',
     'about.download': '下载',
     'about.checkFailed': '检查失败，请重试',
+    'about.downloading': '正在下载... {percent}%',
+    'about.downloadComplete': '下载完成',
+    'about.openFile': '打开文件',
   },
 }
 

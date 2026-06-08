@@ -12,7 +12,7 @@ const GITHUB_URL = 'https://github.com/jauxgit/editor-app';
 const GITHUB_API = 'https://api.github.com/repos/jauxgit/editor-app/releases/latest';
 const GITHUB_RELEASES = 'https://github.com/jauxgit/editor-app/releases/latest';
 
-type UpdateState = 'idle' | 'checking' | 'latest' | 'available' | 'error';
+type UpdateState = 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'downloaded' | 'error';
 
 /** 简单版本号比较：返回 true 如果 latest > current */
 function isNewerVersion(latest: string, current: string): boolean {
@@ -26,12 +26,16 @@ function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
+const API_ASSETS_CACHE: { version: string; url: string; name: string }[] = [];
+
 export function AboutDialog({ isOpen, onClose }: Props) {
   const t = useT();
   const [visible, setVisible] = useState(false);
   const theme = useEditorStore((s) => s.theme);
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [latestVersion, setLatestVersion] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadPath, setDownloadPath] = useState('');
 
   const checkUpdate = useCallback(async () => {
     setUpdateState('checking');
@@ -41,6 +45,11 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       const data = await res.json();
       const tag: string = data.tag_name || '';
       const version = tag.replace(/^v/, '');
+      // 缓存 assets 信息用于后续下载
+      API_ASSETS_CACHE.length = 0;
+      for (const asset of data.assets || []) {
+        API_ASSETS_CACHE.push({ version, url: asset.browser_download_url, name: asset.name });
+      }
       if (isNewerVersion(version, APP_VERSION)) {
         setLatestVersion(version);
         setUpdateState('available');
@@ -52,12 +61,39 @@ export function AboutDialog({ isOpen, onClose }: Props) {
     }
   }, []);
 
+  const handleDownload = useCallback(async () => {
+    const asset = API_ASSETS_CACHE.find(a => a.name.includes('Setup')) || API_ASSETS_CACHE[0];
+    if (!asset) return;
+
+    setUpdateState('downloading');
+    setDownloadProgress(0);
+
+    const api = window.electronAPI;
+    if (!api) return;
+
+    // 监听下载进度
+    api.onDownloadProgress((data) => {
+      setDownloadProgress(data.percent);
+      if (data.done) {
+        setDownloadPath(data.filePath || '');
+        setUpdateState('downloaded');
+      }
+    });
+
+    const result = await api.startDownload(asset.url, asset.name);
+    if (!result.success && result.reason !== 'canceled') {
+      setUpdateState('available');
+    }
+  }, []);
+
   // 弹窗打开时重置状态
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => setVisible(true));
       setUpdateState('idle');
       setLatestVersion('');
+      setDownloadProgress(0);
+      setDownloadPath('');
     } else {
       setVisible(false);
     }
@@ -124,31 +160,46 @@ export function AboutDialog({ isOpen, onClose }: Props) {
         );
       case 'available':
         return (
-          <a
-            href={GITHUB_RELEASES}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${btnClass} inline-flex items-center justify-center gap-2 no-underline`}
+          <button
+            onClick={handleDownload}
+            className={`${btnClass} inline-flex items-center justify-center gap-2`}
             style={baseStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
             onMouseLeave={(e) => Object.assign(e.currentTarget.style, baseStyle)}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             {t('about.download')} (v{latestVersion})
-          </a>
+          </button>
+        );
+      case 'downloading':
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <span className="flex-1">{t('about.downloading', { percent: downloadProgress })}</span>
+              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{downloadProgress}%</span>
+            </div>
+            <div
+              className="w-full h-2 rounded-full overflow-hidden"
+              style={{ background: 'var(--bg-hover)' }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: downloadProgress + '%', background: 'var(--accent)' }}
+              />
+            </div>
+          </div>
+        );
+      case 'downloaded':
+        return (
+          <div className="space-y-2">
+            <div className="text-center text-xs" style={{ color: 'var(--text-dim)' }}>
+              {t('about.downloadComplete')}
+            </div>
+          </div>
         );
       case 'error':
         return (
