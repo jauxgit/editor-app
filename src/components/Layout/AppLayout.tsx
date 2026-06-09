@@ -11,8 +11,6 @@ import { PluginManager } from '../Settings/PluginManager'
 import { AboutDialog } from '../Settings/AboutDialog'
 import { TitleBar } from './TitleBar'
 import { getTheme, editorThemes } from '../../lib/editorThemes'
-import { getFont, editorFonts } from '../../lib/editorFonts'
-import { applyHighlightTheme } from '../../lib/highlightThemes'
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -36,12 +34,8 @@ export function AppLayout() {
   const showFileTree = useEditorStore(s => s.showFileTree)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
   const theme = useEditorStore(s => s.theme)
-  const highlightTheme = useEditorStore(s => s.highlightTheme)
   const cycleTheme = useEditorStore(s => s.cycleTheme)
-  const font = useEditorStore(s => s.font)
-  const setFont = useEditorStore(s => s.setFont)
   const themeDef = getTheme(theme) || editorThemes[0]
-  const fontDef = getFont(font) || editorFonts[0]
 
   const activeTab = tabs.find(t => t.path === activeTabPath)
   const sidebarWidth = showFileTree ? '260px' : '0px'
@@ -83,28 +77,6 @@ export function AppLayout() {
       }
     })()
   }, [])
-
-  // 应用主题 CSS 变量
-  useEffect(() => {
-    const def = getTheme(theme) || editorThemes[0]
-    const root = document.documentElement
-    for (const [key, val] of Object.entries(def.vars)) {
-      root.style.setProperty(key, val)
-    }
-  }, [theme])
-
-  // 应用字体 CSS 变量
-  useEffect(() => {
-    const def = getFont(font) || editorFonts[0]
-    const root = document.documentElement
-    root.style.setProperty('--font-ui', def.uiFont)
-    root.style.setProperty('--font-mono', def.monoFont)
-  }, [font])
-
-  // 注入 highlight.js 预览代码高亮 CSS（独立于 viewMode，确保始终跟随）
-  useEffect(() => {
-    applyHighlightTheme(highlightTheme)
-  }, [highlightTheme])
 
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback((e: KeyboardEvent) => {

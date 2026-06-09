@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AppLayout } from './components/Layout/AppLayout'
+import { ThemeProvider } from './components/ThemeProvider'
 import { registerBuiltinPlugins } from './plugins'
 
 export default function App() {
@@ -7,5 +8,9 @@ export default function App() {
     registerBuiltinPlugins()
   }, [])
 
-  return <AppLayout />
+  return (
+    <ThemeProvider>
+      <AppLayout />
+    </ThemeProvider>
+  )
 }

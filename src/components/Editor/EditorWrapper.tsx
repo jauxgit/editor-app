@@ -15,7 +15,7 @@ import {
   rectangularSelection,
 } from '@codemirror/view';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { setActiveEditorView } from '../../lib/commands';
+import { setActiveEditorView, removeActiveEditorView } from '../../lib/commands';
 import { usePlugins } from '../../lib/pluginRegistry';
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
@@ -131,7 +131,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     setActiveEditorView(view);
 
     return () => {
-      setActiveEditorView(null);
+      removeActiveEditorView(view);
       view.destroy();
       viewRef.current = null;
     };
