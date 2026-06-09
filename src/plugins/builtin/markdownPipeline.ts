@@ -3,6 +3,7 @@ import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
 import type { MarkEditPlugin } from '../../lib/pluginRegistry';
 import { rehypeCodeLabels, rehypeMarkExplicitLanguage } from '../../lib/rehype-code-labels';
+import { rehypeToc } from '../../lib/rehype-toc';
 
 export function markdownPipelinePlugin(): MarkEditPlugin {
   return {
@@ -13,6 +14,7 @@ export function markdownPipelinePlugin(): MarkEditPlugin {
     remarkPlugins: [[remarkGfm]],
     rehypePlugins: [
       [rehypeSlug],
+      [rehypeToc],
       [rehypeMarkExplicitLanguage],
       [rehypeHighlight],
       [rehypeCodeLabels],
