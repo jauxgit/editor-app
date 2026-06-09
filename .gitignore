@@ -16,7 +16,7 @@ dist-ssr
 .trae
 .vscode
 .staging
-.reasonix
+*reasonix*
 
 # Editor directories and files
 .vscode/*
@@ -31,4 +31,4 @@ dist-ssr
 CLAUDE.md
 .trae/documents/slim-down-app-asar.md
 .codegraph
-reasonix.toml
+
