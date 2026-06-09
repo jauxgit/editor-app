@@ -43,15 +43,28 @@ class CommandRegistry {
 /** 全局命令注册表单例 */
 export const commands = new CommandRegistry()
 
-/** 当前活跃的 CM6 EditorView 引用（供菜单栏等外部调用 CM6 命令） */
-let activeEditorView: import('@codemirror/view').EditorView | null = null
+/**
+ * 当前活跃的 CM6 EditorView 引用集合（供菜单栏等外部调用 CM6 命令）。
+ * 使用 Set 而非单一引用以支持多实例（如分屏模式）：
+ * 一个实例卸载时不会错误地清掉另一个实例的引用。
+ */
+const activeEditorViews = new Set<import('@codemirror/view').EditorView>()
 
-export function setActiveEditorView(view: import('@codemirror/view').EditorView | null) {
-  activeEditorView = view
+export function setActiveEditorView(view: import('@codemirror/view').EditorView) {
+  activeEditorViews.add(view)
+}
+
+export function removeActiveEditorView(view: import('@codemirror/view').EditorView) {
+  activeEditorViews.delete(view)
 }
 
 export function getActiveEditorView(): import('@codemirror/view').EditorView | null {
-  return activeEditorView
+  // 取 Set 中最后一个加入的 view（类似栈顶）
+  let result: import('@codemirror/view').EditorView | null = null
+  for (const v of activeEditorViews) {
+    result = v
+  }
+  return result
 }
 
 /**
