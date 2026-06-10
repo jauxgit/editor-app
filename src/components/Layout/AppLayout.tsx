@@ -4,6 +4,8 @@ import { createNewFile } from '../../lib/commands'
 import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { FileTree } from '../FileTree/FileTree'
+import { TocView } from '../FileTree/TocView'
+import type { TocItem } from '../Preview/MarkdownPreview'
 import { EditorWrapper } from '../Editor/EditorWrapper'
 import { MarkdownPreview } from '../Preview/MarkdownPreview'
 import { CommandPalette, useRegisterCommands } from './CommandPalette'
@@ -17,6 +19,10 @@ export function AppLayout() {
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined)
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'outline'>('files')
+  const [tocItems, setTocItems] = useState<TocItem[]>([])
+  const [activeTocId, setActiveTocId] = useState<string | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const t = useT()
   const tRef = useRef(t)
   tRef.current = t
@@ -33,12 +39,25 @@ export function AppLayout() {
   const setViewMode = useEditorStore(s => s.setViewMode)
   const showFileTree = useEditorStore(s => s.showFileTree)
   const toggleFileTree = useEditorStore(s => s.toggleFileTree)
+  const sidebarWidth = useEditorStore(s => s.sidebarWidth)
+  const setSidebarWidth = useEditorStore(s => s.setSidebarWidth)
   const theme = useEditorStore(s => s.theme)
   const cycleTheme = useEditorStore(s => s.cycleTheme)
   const themeDef = getTheme(theme) || editorThemes[0]
 
   const activeTab = tabs.find(t => t.path === activeTabPath)
-  const sidebarWidth = showFileTree ? '260px' : '0px'
+
+  // 大纲点击 → 在预览区跳转到标题
+  const handleTocItemClick = useCallback((id: string) => {
+    // 确保预览模式可见；如果当前是 source 模式则暂时无法滚动
+    if (viewMode === 'source') return
+    // 找到预览区的标题元素并滚动
+    const previewEl = document.querySelector('.markdown-preview')
+    const heading = previewEl?.querySelector(`#${CSS.escape(id)}`)
+    if (heading) {
+      heading.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [viewMode])
 
   // 注册命令面板命令
   useRegisterCommands()
@@ -127,6 +146,51 @@ export function AppLayout() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // 侧边栏右边框拖拽调整宽度
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const dragState = useRef<{ startX: number; startW: number } | null>(null)
+  const [isBorderHover, setIsBorderHover] = useState(false)
+
+  const handleSidebarMouseDown = useCallback((e: React.MouseEvent) => {
+    // 仅限右边框 6px 区域内触发拖拽
+    const rect = sidebarRef.current?.getBoundingClientRect()
+    if (!rect) return
+    if (e.clientX < rect.right - 6) return
+    e.preventDefault()
+    dragState.current = { startX: e.clientX, startW: sidebarWidth }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [sidebarWidth])
+
+  const handleSidebarMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = sidebarRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const onEdge = e.clientX >= rect.right - 6 && e.clientX <= rect.right
+    setIsBorderHover(onEdge)
+  }, [])
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragState.current) return
+      const dx = e.clientX - dragState.current.startX
+      const newW = Math.max(180, Math.min(dragState.current.startW + dx, window.innerWidth / 2))
+      setSidebarWidth(newW)
+    }
+    const onMouseUp = () => {
+      if (dragState.current) {
+        dragState.current = null
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [setSidebarWidth])
 
   // 命令面板/插件管理弹窗的自定义事件
   useEffect(() => {
@@ -373,10 +437,53 @@ export function AppLayout() {
         <div className="flex flex-1 overflow-hidden">
           {/* File Tree */}
           <div
-            className="shrink-0 border-r overflow-hidden transition-all duration-200"
-            style={{ width: sidebarWidth, borderColor: 'var(--border)' }}
+            ref={sidebarRef}
+            onMouseDown={handleSidebarMouseDown}
+            onMouseMove={handleSidebarMouseMove}
+            onMouseLeave={() => setIsBorderHover(false)}
+            className="shrink-0 border-r overflow-hidden"
+            style={{
+              width: showFileTree ? `${sidebarWidth}px` : '0px',
+              borderColor: 'var(--border)',
+              cursor: isBorderHover ? 'col-resize' : undefined,
+            }}
           >
-            {showFileTree && <FileTree />}
+            {showFileTree && (
+              <div className="h-full flex flex-col">
+                {/* Sidebar tabs: Files / Outline */}
+                <div className="flex items-stretch border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+                  <button
+                    onClick={() => setSidebarTab('files')}
+                    className="relative flex-1 flex items-center justify-center h-8 text-xs transition-colors"
+                    style={{
+                      color: sidebarTab === 'files' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      background: sidebarTab === 'files' ? 'var(--bg-base)' : 'transparent',
+                    }}
+                  >
+                    {t('sidebar.tabFiles')}
+                    {sidebarTab === 'files' && (
+                      <span className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: 'var(--accent)' }} />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setSidebarTab('outline')}
+                    className="relative flex-1 flex items-center justify-center h-8 text-xs transition-colors"
+                    style={{
+                      color: sidebarTab === 'outline' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      background: sidebarTab === 'outline' ? 'var(--bg-base)' : 'transparent',
+                    }}
+                  >
+                    {t('sidebar.tabOutline')}
+                    {sidebarTab === 'outline' && (
+                      <span className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: 'var(--accent)' }} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Tab content */}
+                {sidebarTab === 'files' ? <FileTree /> : <TocView items={tocItems} activeId={activeTocId} onItemClick={handleTocItemClick} />}
+              </div>
+            )}
           </div>
 
           {/* Editor area */}
@@ -445,6 +552,8 @@ export function AppLayout() {
                         content={activeTab?.content || ''}
                         scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
                         onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
+                        onTocChange={setTocItems}
+                        onActiveIdChange={setActiveTocId}
                       />
                     </div>
                   )}

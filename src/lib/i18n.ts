@@ -64,6 +64,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.hint': 'Open a folder to start',
     'fileTree.addFile': 'New File',
 
+    // Sidebar tabs
+    'sidebar.tabFiles': 'Files',
+    'sidebar.tabOutline': 'Outline',
+
     // Command palette
     'cmdPalette.placeholder': 'Type a command...',
     'cmdPalette.noResults': 'No matching commands',
@@ -120,6 +124,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': 'Outline',
+    'toc.empty': 'No headings found',
 
     // Plugin Manager
     'plugin.title': 'Plugin Manager',
@@ -201,7 +206,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
-    'fileTree.addFile': '新建文件',
+
+    // Sidebar tabs
+    'sidebar.tabFiles': '文件',
+    'sidebar.tabOutline': '大纲',
 
     'cmdPalette.placeholder': '输入命令...',
     'cmdPalette.noResults': '无匹配命令',
@@ -254,6 +262,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': '目录',
+    'toc.empty': '未找到标题',
 
     // Plugin Manager
     'plugin.title': '插件管理',

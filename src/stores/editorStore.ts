@@ -12,6 +12,8 @@ interface EditorState {
   /** Theme ID — see lib/editorThemes.ts for available themes */
   theme: string
   showFileTree: boolean
+  /** Sidebar width in pixels — persisted for drag-to-resize */
+  sidebarWidth: number
   highlightTheme: HighlightThemeId
   language: Lang
   lastFilePath: string | null
@@ -32,6 +34,7 @@ interface EditorState {
   setLastRootPath: (path: string | null) => void
   togglePlugin: (id: string) => void
   setFont: (id: string) => void
+  setSidebarWidth: (w: number) => void
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -40,6 +43,7 @@ export const useEditorStore = create<EditorState>()(
       viewMode: 'source',
       theme: DEFAULT_THEME_ID,
       showFileTree: true,
+      sidebarWidth: 260,
       highlightTheme: 'github',
       language: 'en',
       lastFilePath: null,
@@ -76,6 +80,7 @@ export const useEditorStore = create<EditorState>()(
         return { disabledPlugins: disabled }
       }),
       setFont: (id) => set({ font: id }),
+      setSidebarWidth: (w) => set({ sidebarWidth: w }),
     }),
     {
       name: 'markedit-settings',
@@ -84,6 +89,7 @@ export const useEditorStore = create<EditorState>()(
         highlightTheme: state.highlightTheme,
         language: state.language,
         showFileTree: state.showFileTree,
+        sidebarWidth: state.sidebarWidth,
         lastFilePath: state.lastFilePath,
         lastRootPath: state.lastRootPath,
         disabledPlugins: state.disabledPlugins,
