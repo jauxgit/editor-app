@@ -1,7 +1,6 @@
 import { useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react';
 import { getFont } from '../../lib/editorFonts';
 import { applyHighlightTheme } from '../../lib/highlightThemes';
-import { useT } from '../../lib/i18n';
 import { renderMarkdownWithPlugins } from '../../lib/markdown';
 import { usePlugins } from '../../lib/pluginRegistry';
 import { useEditorStore } from '../../stores/editorStore';
@@ -11,9 +10,13 @@ interface Props {
   /** 编辑器滚动位置同步 (0-1 比例) */
   scrollRatio?: number;
   onScrollChange?: (ratio: number) => void;
+  /** 目录变更回调（同步 tocItems 到侧边栏） */
+  onTocChange?: (items: TocItem[]) => void;
+  /** 当前活跃标题 ID 变更回调 */
+  onActiveIdChange?: (id: string | null) => void;
 }
 
-interface TocItem {
+export interface TocItem {
   id: string;
   text: string;
   level: number;
@@ -33,7 +36,7 @@ function extractToc(html: string): TocItem[] {
   return items;
 }
 
-export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props) {
+export function MarkdownPreview({ content, scrollRatio, onScrollChange, onTocChange, onActiveIdChange }: Props) {
   const registry = usePlugins();
 
   const html = useMemo(
@@ -49,9 +52,17 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
   const font = useEditorStore((s) => s.font);
   const ref = useRef<HTMLDivElement>(null);
   const isSyncing = useRef(false);
-  const [tocOpen, setTocOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const t = useT();
+
+  // 同步 tocItems 到父级
+  useEffect(() => {
+    onTocChange?.(tocItems);
+  }, [tocItems, onTocChange]);
+
+  // 同步 activeId 到父级
+  useEffect(() => {
+    onActiveIdChange?.(activeId);
+  }, [activeId, onActiveIdChange]);
 
   useInsertionEffect(() => {
     applyHighlightTheme(highlightTheme);
@@ -113,46 +124,8 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange }: Props)
     return () => observer.disconnect();
   }, [html, tocItems]);
 
-  // 点击跳转至标题
-  const handleTocClick = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    const el = ref.current?.querySelector(`#${CSS.escape(id)}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-      setActiveId(id);
-      setTocOpen(false);
-    }
-  };
-
   return (
-    <div className="relative h-full">
-      {/* TOC 浮动面板 — 在滚动容器外部，保持固定 */}
-      {tocItems.length > 0 && (
-        <div className="toc-panel">
-          <button
-            className="toc-toggle"
-            onClick={() => setTocOpen((o) => !o)}
-            title={t('toc.title')}
-          >
-            {tocOpen ? '✕' : '☰'}
-          </button>
-          {tocOpen && (
-            <nav className="toc-nav">
-              {tocItems.map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  className={`toc-link toc-level-${item.level} ${activeId === item.id ? 'toc-active' : ''}`}
-                  onClick={(e) => handleTocClick(e, item.id)}
-                >
-                  {item.text}
-                </a>
-              ))}
-            </nav>
-          )}
-        </div>
-      )}
-
+    <div className="h-full">
       <div
         ref={ref}
         className="markdown-preview h-full"
