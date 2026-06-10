@@ -161,6 +161,8 @@ export function AppLayout() {
     dragState.current = { startX: e.clientX, startW: sidebarWidth }
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
+    // 拖拽时禁用过渡，避免卡顿
+    sidebarRef.current?.classList.add('sidebar-panel-dragging')
   }, [sidebarWidth])
 
   const handleSidebarMouseMove = useCallback((e: React.MouseEvent) => {
@@ -182,6 +184,8 @@ export function AppLayout() {
         dragState.current = null
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
+        // 拖拽结束恢复过渡动画
+        sidebarRef.current?.classList.remove('sidebar-panel-dragging')
       }
     }
     document.addEventListener('mousemove', onMouseMove)
@@ -441,7 +445,7 @@ export function AppLayout() {
             onMouseDown={handleSidebarMouseDown}
             onMouseMove={handleSidebarMouseMove}
             onMouseLeave={() => setIsBorderHover(false)}
-            className="shrink-0 border-r overflow-hidden"
+            className="shrink-0 border-r overflow-hidden sidebar-panel"
             style={{
               width: showFileTree ? `${sidebarWidth}px` : '0px',
               borderColor: 'var(--border)',

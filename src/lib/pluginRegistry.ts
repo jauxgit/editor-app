@@ -231,7 +231,7 @@ class PluginRegistry {
       if (this.has(m.id)) continue // 不覆盖已有插件（含内置）
       try {
         // 使用完整协议 URL，确保 dev（localhost）和 production（markedit://）都走同一协议处理器
-        const mod = await import(`markedit://plugins/${m.id}/${m.entry}`)
+        const mod = await import(/* @vite-ignore */ `markedit://plugins/${m.id}/${m.entry}`)
         if (mod.default) {
           this.register({
             ...mod.default,
