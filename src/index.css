@@ -72,6 +72,16 @@ html::before {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
 /* ============================================================
+   Sidebar panel — draggable resize
+   ============================================================ */
+.sidebar-panel {
+  transition: width 0.2s ease;
+}
+.sidebar-panel-dragging {
+  transition: none !important;
+}
+
+/* ============================================================
    Image Widget
    ============================================================ */
 .cm-image-widget {
