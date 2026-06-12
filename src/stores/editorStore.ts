@@ -21,6 +21,8 @@ interface EditorState {
   disabledPlugins: string[]
   /** Font preset ID — see lib/editorFonts.ts for available fonts */
   font: string
+  /** 编辑器字号（px） */
+  fontSize: number
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
@@ -34,6 +36,7 @@ interface EditorState {
   setLastRootPath: (path: string | null) => void
   togglePlugin: (id: string) => void
   setFont: (id: string) => void
+  setFontSize: (n: number) => void
   setSidebarWidth: (w: number) => void
 }
 
@@ -50,6 +53,7 @@ export const useEditorStore = create<EditorState>()(
       lastRootPath: null,
       disabledPlugins: [],
       font: DEFAULT_FONT_ID,
+      fontSize: 14,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
@@ -80,6 +84,7 @@ export const useEditorStore = create<EditorState>()(
         return { disabledPlugins: disabled }
       }),
       setFont: (id) => set({ font: id }),
+      setFontSize: (n) => set({ fontSize: n }),
       setSidebarWidth: (w) => set({ sidebarWidth: w }),
     }),
     {
@@ -94,6 +99,7 @@ export const useEditorStore = create<EditorState>()(
         lastRootPath: state.lastRootPath,
         disabledPlugins: state.disabledPlugins,
         font: state.font,
+        fontSize: state.fontSize,
       }),
     }
   )

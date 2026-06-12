@@ -234,6 +234,8 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
       id: 'help',
       label: t('menu.help'),
       items: [
+        { id: 'settings', label: t('menu.settings'), action: () => window.dispatchEvent(new CustomEvent('open-settings')) },
+        { id: 'sep9', divider: true },
         { id: 'plugin-manager', label: t('menu.pluginManager'), action: onOpenPluginManager },
         { id: 'sep8', divider: true },
         { id: 'about', label: t('menu.about'), action: () => window.dispatchEvent(new CustomEvent('open-about')) },

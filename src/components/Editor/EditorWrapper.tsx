@@ -1,9 +1,8 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
+import { markdown, markdownKeymap, markdownLanguage } from '@codemirror/lang-markdown';
 import { highlightSelectionMatches, openSearchPanel, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
-import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
 import {
   crosshairCursor,
   drawSelection,
@@ -15,22 +14,20 @@ import {
   rectangularSelection,
 } from '@codemirror/view';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { setActiveEditorView, removeActiveEditorView } from '../../lib/commands';
-import { usePlugins } from '../../lib/pluginRegistry';
+import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
+import { removeActiveEditorView, setActiveEditorView } from '../../lib/commands';
+import { getFont } from '../../lib/editorFonts';
+import { PluginRegistry, usePlugins } from '../../lib/pluginRegistry';
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
-import { getFont } from '../../lib/editorFonts';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index';
 import { useImageHandler } from './ImageDropHandler';
 
 /** 构建编辑区右键菜单（全部由外置插件注册） */
-function buildEditorContextMenu(
-  registry: import('../../lib/pluginRegistry').PluginRegistry,
-): ContextMenuItem[] {
+function buildEditorContextMenu(registry: PluginRegistry): ContextMenuItem[] {
   return registry.getContextMenuItems();
 }
-
 interface Props {
   docPath: string;
   onScrollChange?: (ratio: number) => void;
@@ -40,11 +37,12 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const updateContent = useWorkspaceStore((s) => s.updateContent);
-  const markClean = useWorkspaceStore((s) => s.markClean);
   const root = useWorkspaceStore((s) => s.root);
   const tab = useWorkspaceStore((s) => s.openTabs.find((t) => t.path === docPath));
   const theme = useEditorStore((s) => s.theme);
   const font = useEditorStore((s) => s.font);
+  const fontSize = useEditorStore((s) => s.fontSize);
+  const setFontSize = useEditorStore((s) => s.setFontSize);
   const registry = usePlugins();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; view: EditorView } | null>(null);
 
@@ -166,7 +164,6 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       if (!savePath) return false;
 
       await window.electronAPI.writeFile(savePath, content);
-      const newName = savePath.split(/[/\\]/).pop() || savePath;
       store.updateTabPath(docPath, savePath);
       store.markClean(savePath);
 
@@ -234,7 +231,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   }, [onScrollChange, docPath, registry.version]);
 
   // 切换字体时直接应用到编辑器 DOM（使用 !important 覆盖 CM6 内部样式）
-  // 依赖项与 init effect 保持一致，确保 EditorView 重建后重新应用字体
+  // 依赖项与 init effect 保持一致，确保 EditorView 重建后重新应用字体 + 字号
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
@@ -245,7 +242,11 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     if (view.contentDOM) {
       view.contentDOM.style.setProperty('font-family', fontVal, 'important');
     }
-  }, [font, docPath, theme, registry.version]);
+    view.dom.style.setProperty('font-size', `${fontSize}px`, 'important');
+    if (view.contentDOM) {
+      view.contentDOM.style.setProperty('font-size', `${fontSize}px`, 'important');
+    }
+  }, [font, docPath, theme, registry.version, fontSize]);
 
   // 监听图片双击事件
   useEffect(() => {
@@ -275,6 +276,27 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     return () => el.removeEventListener('contextmenu', handler);
   }, []);
 
+  const fontSizeRef  = useRef(fontSize);
+  fontSizeRef.current = fontSize;
+  // Ctrl + 鼠标滚轮 → 调整字号
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const el = view.scrollDOM;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const dir = e.deltaY > 0 ? -1 : 1;
+      const step = e.shiftKey ? 2 : 1;
+      const current = fontSizeRef.current;
+      const next = Math.max(10, Math.min(24, current + dir * step));
+      if (next !== fontSize) setFontSize(next);
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [fontSize, setFontSize, docPath]);
+
   // 构建 MD 语法插入 + 插件右键菜单项
   const editorCtxItems: ContextMenuItem[] = ctxMenu ? buildEditorContextMenu(registry) : [];
 
@@ -287,7 +309,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
           y={ctxMenu.y}
           items={editorCtxItems}
           onClose={() => setCtxMenu(null)}
-          theme={theme}
+          theme={theme.startsWith('light') ? 'light' : 'dark'}
         />
       )}
     </>

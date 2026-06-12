@@ -5,6 +5,8 @@ export interface TabInfo {
   path: string
   name: string
   content: string
+  /** 最近保存/打开时的内容快照，用于判断 isDirty */
+  savedContent: string
   isDirty: boolean
   isUntitled?: boolean
 }
@@ -65,14 +67,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({
         activeTabPath: path,
         openTabs: tabs.map(t =>
-          t.path === path ? { ...t, content, isDirty: false } : t
+          t.path === path ? { ...t, content, isDirty: false, savedContent: content } : t
         ),
       })
       return
     }
     const name = path.split(/[/\\]/).pop() || path
     set({
-      openTabs: [...tabs, { path, name, content, isDirty: false }],
+      openTabs: [...tabs, { path, name, content, savedContent: content, isDirty: false }],
       activeTabPath: path,
     })
   },
@@ -93,7 +95,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   updateContent: (path, content) => {
     set({
       openTabs: get().openTabs.map(t =>
-        t.path === path ? { ...t, content, isDirty: true } : t
+        t.path === path ? { ...t, content, isDirty: t.isUntitled ? true : content !== t.savedContent } : t
       ),
     })
   },
@@ -101,7 +103,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   markClean: (path) => {
     set({
       openTabs: get().openTabs.map(t =>
-        t.path === path ? { ...t, isDirty: false } : t
+        t.path === path && !t.isUntitled ? { ...t, isDirty: false, savedContent: t.content } : t
       ),
     })
   },
@@ -114,7 +116,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return
     }
     set({
-      openTabs: [...tabs, { path, name: path, content: '', isDirty: true, isUntitled: true }],
+      openTabs: [...tabs, { path, name: path, content: '', savedContent: '', isDirty: true, isUntitled: true }],
       activeTabPath: path,
     })
   },

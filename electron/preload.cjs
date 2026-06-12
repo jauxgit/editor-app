@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ===== 对话框 =====
   showConfirmDialog: (message, title) => ipcRenderer.invoke('dialog:confirm', message, title),
+  confirmUnsaved: (message, title) => ipcRenderer.invoke('dialog:confirmUnsaved', message, title),
 
   // ===== 图片操作 =====
   copyImage: (sourcePath, workspaceRoot) =>
