@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useT } from '../../lib/i18n';
-import { useEditorStore } from '../../stores/editorStore';
 
 interface Props {
   isOpen: boolean;
@@ -31,11 +30,9 @@ const API_ASSETS_CACHE: { version: string; url: string; name: string }[] = [];
 export function AboutDialog({ isOpen, onClose }: Props) {
   const t = useT();
   const [visible, setVisible] = useState(false);
-  const theme = useEditorStore((s) => s.theme);
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [latestVersion, setLatestVersion] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadPath, setDownloadPath] = useState('');
 
   const checkUpdate = useCallback(async () => {
     setUpdateState('checking');
@@ -75,7 +72,6 @@ export function AboutDialog({ isOpen, onClose }: Props) {
     api.onDownloadProgress((data) => {
       setDownloadProgress(data.percent);
       if (data.done) {
-        setDownloadPath(data.filePath || '');
         setUpdateState('downloaded');
       }
     });
@@ -93,7 +89,6 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       setUpdateState('idle');
       setLatestVersion('');
       setDownloadProgress(0);
-      setDownloadPath('');
     } else {
       setVisible(false);
     }

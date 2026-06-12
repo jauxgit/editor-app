@@ -326,6 +326,22 @@ ipcMain.handle('dialog:confirm', async (_e, message, title) => {
   return result.response === 1
 })
 
+// 未保存更改确认对话框（保存 / 不保存 / 取消）
+ipcMain.handle('dialog:confirmUnsaved', async (_e, message, title) => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (!win) return 'cancel'
+  const result = await dialog.showMessageBox(win, {
+    type: 'warning',
+    title: title || 'Unsaved Changes',
+    message,
+    buttons: ['Save', "Don't Save", 'Cancel'],
+    defaultId: 0,
+    cancelId: 2,
+  })
+  const actions = ['save', 'discard', 'cancel']
+  return actions[result.response] || 'cancel'
+})
+
 // 图片处理
 ipcMain.handle('image:copy', async (_e, sourcePath, workspaceRoot) => {
   const imagesDir = join(workspaceRoot, 'assets', 'images')

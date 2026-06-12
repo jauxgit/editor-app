@@ -14,6 +14,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.save': 'Save',
     'menu.closeTab': 'Close Tab',
     'menu.exit': 'Exit',
+
+    // Confirm dialogs
+    'confirm.unsavedTitle': 'Unsaved Changes',
+    'confirm.unsavedMessage': 'Save changes to "{name}" before closing?',
+    'confirm.save': 'Save',
+    'confirm.discard': "Don't Save",
+    'confirm.cancel': 'Cancel',
     'menu.undo': 'Undo',
     'menu.redo': 'Redo',
     'menu.cut': 'Cut',
@@ -29,6 +36,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.toggleTheme': 'Toggle Theme',
     'menu.commandPalette': 'Command Palette',
     'menu.help': 'Help',
+    'menu.settings': 'Settings...',
     'menu.pluginManager': 'Plugin Manager',
     'menu.about': 'About MarkEdit · 码记',
     'menu.toggleDevTools': 'Toggle DevTools',
@@ -134,6 +142,15 @@ const messages: Record<Lang, Record<string, string>> = {
     'plugin.refresh': 'Refresh',
     'plugin.pluginsCount': '{n} plugins, {m} active',
 
+    // Settings
+    'settings.title': 'Settings',
+    'settings.editor': 'Editor',
+    'settings.theme': 'Theme',
+    'settings.language': 'Language',
+    'settings.fontSize': 'Font Size',
+    'settings.font': 'Font',
+    'settings.highlightTheme': 'Highlight Theme',
+
     // Drag and drop
     'drag.trust.title': 'Trust Folder',
     'drag.trust.message': 'Do you trust this folder and allow MarkEdit to read all files within it?\n\n{folder}',
@@ -162,6 +179,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.save': '保存',
     'menu.closeTab': '关闭标签',
     'menu.exit': '退出',
+
+    // Confirm dialogs
+    'confirm.unsavedTitle': '未保存的更改',
+    'confirm.unsavedMessage': '关闭前是否保存 "{name}" 的更改？',
+    'confirm.save': '保存',
+    'confirm.discard': '不保存',
+    'confirm.cancel': '取消',
     'menu.undo': '撤销',
     'menu.redo': '重做',
     'menu.cut': '剪切',
@@ -177,6 +201,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'menu.toggleTheme': '切换主题',
     'menu.commandPalette': '命令面板',
     'menu.help': '帮助',
+    'menu.settings': '设置...',
     'menu.pluginManager': '插件管理',
     'menu.about': '关于 MarkEdit · 码记',
     'menu.toggleDevTools': '开发者工具',
@@ -271,6 +296,15 @@ const messages: Record<Lang, Record<string, string>> = {
     'plugin.openDir': '打开插件目录',
     'plugin.refresh': '重新扫描',
     'plugin.pluginsCount': '{n} 个插件，{m} 个已启用',
+
+    // Settings
+    'settings.title': '设置',
+    'settings.editor': '编辑器',
+    'settings.theme': '主题',
+    'settings.language': '语言',
+    'settings.fontSize': '字号',
+    'settings.font': '字体',
+    'settings.highlightTheme': '高亮主题',
 
     // Drag and drop
     'drag.trust.title': '信任文件夹',

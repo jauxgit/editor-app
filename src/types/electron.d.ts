@@ -24,6 +24,7 @@ export interface ElectronAPI {
   listDir: (dirPath: string) => Promise<FileEntry[]>
   ensureDir: (dirPath: string) => Promise<void>
   showConfirmDialog: (message: string, title: string) => Promise<boolean>
+  confirmUnsaved: (message: string, title: string) => Promise<'save' | 'discard' | 'cancel'>
   copyImage: (sourcePath: string, workspaceRoot: string) => Promise<{
     success: boolean
     relativePath: string
