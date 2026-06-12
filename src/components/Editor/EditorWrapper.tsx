@@ -21,7 +21,7 @@ import { PluginRegistry, usePlugins } from '../../lib/pluginRegistry';
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
-import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index';
+import { ContextMenu, type ContextMenuItem } from '../ContextMenu';
 import { useImageHandler } from './ImageDropHandler';
 
 /** 构建编辑区右键菜单（全部由外置插件注册） */
@@ -276,8 +276,6 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     return () => el.removeEventListener('contextmenu', handler);
   }, []);
 
-  const fontSizeRef  = useRef(fontSize);
-  fontSizeRef.current = fontSize;
   // Ctrl + 鼠标滚轮 → 调整字号
   useEffect(() => {
     const view = viewRef.current;
@@ -289,8 +287,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
       e.preventDefault();
       const dir = e.deltaY > 0 ? -1 : 1;
       const step = e.shiftKey ? 2 : 1;
-      const current = fontSizeRef.current;
-      const next = Math.max(10, Math.min(24, current + dir * step));
+      const next = Math.max(10, Math.min(24, fontSize + dir * step));
       if (next !== fontSize) setFontSize(next);
     };
     el.addEventListener('wheel', handler, { passive: false });
