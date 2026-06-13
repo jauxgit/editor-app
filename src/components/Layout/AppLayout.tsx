@@ -33,6 +33,7 @@ export function AppLayout() {
   const activeTabPath = useWorkspaceStore((s) => s.activeTabPath);
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
   const closeTab = useWorkspaceStore((s) => s.closeTab);
+  const fontSize = useEditorStore((s) => s.fontSize);
 
   // 关闭标签确认（未保存时提示）
   const handleCloseTab = useCallback(
@@ -808,6 +809,7 @@ export function AppLayout() {
           <span>{viewModeLabels[viewMode]}</span>
           <span className="ml-auto">{t('status.utf8')}</span>
           <span>{t('status.markdown')}</span>
+          <span>{fontSize}px</span>
         </div>
       </div>
     </>
