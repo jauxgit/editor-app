@@ -11,7 +11,14 @@ const GITHUB_URL = 'https://github.com/jauxgit/editor-app';
 const GITHUB_API = 'https://api.github.com/repos/jauxgit/editor-app/releases/latest';
 const GITHUB_RELEASES = 'https://github.com/jauxgit/editor-app/releases/latest';
 
-type UpdateState = 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'downloaded' | 'error';
+type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'latest'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error';
 
 /** 简单版本号比较：返回 true 如果 latest > current */
 function isNewerVersion(latest: string, current: string): boolean {
@@ -59,7 +66,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
   }, []);
 
   const handleDownload = useCallback(async () => {
-    const asset = API_ASSETS_CACHE.find(a => a.name.includes('Setup')) || API_ASSETS_CACHE[0];
+    const asset = API_ASSETS_CACHE.find((a) => a.name.includes('Setup')) || API_ASSETS_CACHE[0];
     if (!asset) return;
 
     setUpdateState('downloading');
@@ -162,7 +169,16 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
             onMouseLeave={(e) => Object.assign(e.currentTarget.style, baseStyle)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
@@ -173,9 +189,16 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       case 'downloading':
         return (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <span className="flex-1">{t('about.downloading', { percent: downloadProgress })}</span>
-              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{downloadProgress}%</span>
+            <div
+              className="flex items-center gap-2 text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <span className="flex-1">
+                {t('about.downloading', { percent: downloadProgress })}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                {downloadProgress}%
+              </span>
             </div>
             <div
               className="w-full h-2 rounded-full overflow-hidden"
@@ -234,7 +257,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-200"
       style={{
         background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-        backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        // backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
       }}
       onClick={onClose}
     >
