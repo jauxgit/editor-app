@@ -292,7 +292,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
-  }, [fontSize, setFontSize, docPath]);
+  }, [fontSize, setFontSize, docPath,registry.version]);
 
   // 构建 MD 语法插入 + 插件右键菜单项
   const editorCtxItems: ContextMenuItem[] = ctxMenu ? buildEditorContextMenu(registry) : [];
