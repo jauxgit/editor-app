@@ -1,61 +1,65 @@
-import { useEffect, useState } from 'react'
-import { useT } from '../../lib/i18n'
-import { useEditorStore } from '../../stores/editorStore'
-import { editorThemes } from '../../lib/editorThemes'
-import { editorFonts } from '../../lib/editorFonts'
-import type { HighlightThemeId } from '../../lib/highlightThemes'
+import { useEffect, useState } from 'react';
+import { editorFonts } from '../../lib/editorFonts';
+import { editorThemes } from '../../lib/editorThemes';
+import type { HighlightThemeId } from '../../lib/highlightThemes';
+import { useT } from '../../lib/i18n';
+import { useEditorStore } from '../../stores/editorStore';
 
 interface Props {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-type SettingsTab = 'editor' | 'theme' | 'language'
+type SettingsTab = 'editor' | 'theme' | 'language';
 
 export function SettingsDialog({ isOpen, onClose }: Props) {
-  const t = useT()
-  const [visible, setVisible] = useState(false)
-  const [activeTab, setActiveTab] = useState<SettingsTab>('editor')
+  const t = useT();
+  const [visible, setVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>('editor');
 
-  const theme = useEditorStore(s => s.theme)
-  const setTheme = useEditorStore(s => s.setTheme)
-  const highlightTheme = useEditorStore(s => s.highlightTheme)
-  const setHighlightTheme = useEditorStore(s => s.setHighlightTheme)
-  const language = useEditorStore(s => s.language)
-  const setLanguage = useEditorStore(s => s.setLanguage)
-  const font = useEditorStore(s => s.font)
-  const setFont = useEditorStore(s => s.setFont)
-  const fontSize = useEditorStore(s => s.fontSize)
-  const setFontSize = useEditorStore(s => s.setFontSize)
+  const theme = useEditorStore((s) => s.theme);
+  const setTheme = useEditorStore((s) => s.setTheme);
+  const highlightTheme = useEditorStore((s) => s.highlightTheme);
+  const setHighlightTheme = useEditorStore((s) => s.setHighlightTheme);
+  const language = useEditorStore((s) => s.language);
+  const setLanguage = useEditorStore((s) => s.setLanguage);
+  const font = useEditorStore((s) => s.font);
+  const setFont = useEditorStore((s) => s.setFont);
+  const fontSize = useEditorStore((s) => s.fontSize);
+  const setFontSize = useEditorStore((s) => s.setFontSize);
 
   // 开启动画
   // ESC 关闭
   useEffect(() => {
     if (isOpen) {
-      requestAnimationFrame(() => setVisible(true))
+      requestAnimationFrame(() => setVisible(true));
     } else {
-      setVisible(false)
+      setVisible(false);
     }
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const highlightThemeIds: HighlightThemeId[] = [
-    'github', 'github-dark', 'atom-one-light', 'night-owl',
-    'a11y-light', 'monokai',
-  ]
+    'github',
+    'github-dark',
+    'atom-one-light',
+    'night-owl',
+    'a11y-light',
+    'monokai',
+  ];
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-200"
       style={{
         background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-        backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        // backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
       }}
       onClick={onClose}
     >
@@ -68,27 +72,42 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
           transform: visible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.96)',
           opacity: visible ? 1 : 0,
         }}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b"
+          style={{ borderColor: 'var(--border)' }}
+        >
           <h2 className="text-base font-medium">{t('settings.title')}</h2>
           <button
             onClick={onClose}
             className="flex items-center justify-center w-6 h-6 rounded transition-colors"
             style={{ color: 'var(--text-dim)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
-            <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <line x1="2" y1="2" x2="8" y2="8" />
+              <line x1="8" y1="2" x2="2" y2="8" />
             </svg>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-stretch border-b shrink-0 px-4" style={{ borderColor: 'var(--border)' }}>
-          {(['editor', 'theme', 'language'] as SettingsTab[]).map(tab => (
+        <div
+          className="flex items-stretch border-b shrink-0 px-4"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          {(['editor', 'theme', 'language'] as SettingsTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -99,7 +118,10 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
             >
               {t(`settings.${tab}`)}
               {activeTab === tab && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: 'var(--accent)' }} />
+                <span
+                  className="absolute inset-x-0 bottom-0 h-0.5"
+                  style={{ background: 'var(--accent)' }}
+                />
               )}
             </button>
           ))}
@@ -111,35 +133,45 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
             <>
               {/* Font size */}
               <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label
+                  className="text-xs font-medium block mb-1.5"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {t('settings.fontSize')}: <span className="font-mono">{fontSize}px</span>
                 </label>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>10</span>
+                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    10
+                  </span>
                   <input
                     type="range"
                     min="10"
                     max="24"
                     step="1"
                     value={fontSize}
-                    onChange={e => setFontSize(Number(e.target.value))}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
                     className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
                     style={{
                       background: 'var(--border)',
                       accentColor: 'var(--accent)',
                     }}
                   />
-                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>24</span>
+                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    24
+                  </span>
                 </div>
               </div>
 
               {/* Font family */}
               <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label
+                  className="text-xs font-medium block mb-1.5"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {t('settings.font')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {editorFonts.map(f => (
+                  {editorFonts.map((f) => (
                     <button
                       key={f.id}
                       onClick={() => setFont(f.id)}
@@ -162,11 +194,14 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
             <>
               {/* Editor theme */}
               <div>
-                <label className="text-xs font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label
+                  className="text-xs font-medium block mb-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {t('settings.theme')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {editorThemes.map(th => (
+                  {editorThemes.map((th) => (
                     <button
                       key={th.id}
                       onClick={() => setTheme(th.id)}
@@ -177,7 +212,15 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
                         color: 'var(--text-primary)',
                       }}
                     >
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={th.iconColor} strokeWidth="1.5" strokeLinecap="round">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke={th.iconColor}
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      >
                         <path d={th.iconPath} />
                       </svg>
                       <span className="truncate">{th.name}</span>
@@ -188,18 +231,22 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
 
               {/* Highlight theme */}
               <div>
-                <label className="text-xs font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label
+                  className="text-xs font-medium block mb-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {t('settings.highlightTheme')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {highlightThemeIds.map(id => (
+                  {highlightThemeIds.map((id) => (
                     <button
                       key={id}
                       onClick={() => setHighlightTheme(id)}
                       className="px-2.5 py-1.5 text-xs rounded-lg transition-all border"
                       style={{
                         borderColor: highlightTheme === id ? 'var(--accent)' : 'var(--border)',
-                        background: highlightTheme === id ? 'var(--accent-muted)' : 'var(--bg-base)',
+                        background:
+                          highlightTheme === id ? 'var(--accent-muted)' : 'var(--bg-base)',
                         color: highlightTheme === id ? 'var(--accent)' : 'var(--text-secondary)',
                       }}
                     >
@@ -213,11 +260,14 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
 
           {activeTab === 'language' && (
             <div>
-              <label className="text-xs font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label
+                className="text-xs font-medium block mb-2"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 {t('settings.language')}
               </label>
               <div className="flex gap-2">
-                {(['en', 'zh'] as const).map(lang => (
+                {(['en', 'zh'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => setLanguage(lang)}
@@ -237,5 +287,5 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
         </div>
       </div>
     </div>
-  )
+  );
 }
