@@ -242,8 +242,6 @@ export function useRegisterCommands() {
   const language = useEditorStore((s) => s.language);
   const t = useT();
   const registry = usePlugins();
-  const root = useWorkspaceStore((s) => s.root);
-  const openFile = useWorkspaceStore((s) => s.openFile);
 
   useEffect(() => {
     commands.clear();
