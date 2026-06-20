@@ -148,14 +148,11 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
 
   // ===== 保存逻辑（处理 untitled 标签 + 保存对话框） =====
   const saveCurrentFile = useCallback(async () => {
-    if (!viewRef.current || !tab || !window.electronAPI) return false;
+    if (!viewRef.current || !window.electronAPI) return false;
     const content = viewRef.current.state.doc.toString();
     const store = useWorkspaceStore.getState();
-
-    // 先更新内容到 store
-    store.updateContent(docPath, content);
-
     const currentTab = store.openTabs.find((t) => t.path === docPath);
+    if (!currentTab) return false;
 
     // untitled 文件 → 弹出保存对话框
     if (currentTab?.isUntitled) {
@@ -183,15 +180,15 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     await window.electronAPI.writeFile(docPath, content);
     store.markClean(docPath);
     return true;
-  }, [docPath, tab]);
+  }, [docPath]);
 
   // 注册 Electron 菜单保存事件
   useEffect(() => {
-    if (!window.electronAPI || !tab) return;
+    if (!window.electronAPI) return;
     window.electronAPI.onMenuSave(() => {
       saveCurrentFile();
     });
-  }, [docPath, tab, saveCurrentFile]);
+  }, [saveCurrentFile]);
 
   // Ctrl+S 保存
   useEffect(() => {
@@ -203,7 +200,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [docPath, tab, saveCurrentFile]);
+  }, [saveCurrentFile]);
 
   // 滚动位置同步 — rAF 轮询检测滚动变化
   useEffect(() => {
@@ -306,7 +303,6 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
           y={ctxMenu.y}
           items={editorCtxItems}
           onClose={() => setCtxMenu(null)}
-          theme={theme.startsWith('light') ? 'light' : 'dark'}
         />
       )}
     </>

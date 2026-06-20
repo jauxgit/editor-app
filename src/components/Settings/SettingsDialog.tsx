@@ -182,7 +182,7 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
                         color: font === f.id ? 'var(--accent)' : 'var(--text-secondary)',
                       }}
                     >
-                      {f.id}
+                      {t(`editorFont.${f.id}`)}
                     </button>
                   ))}
                 </div>

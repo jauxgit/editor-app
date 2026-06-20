@@ -13,10 +13,9 @@ interface Props {
   y: number
   items: ContextMenuItem[]
   onClose: () => void
-  theme: 'dark' | 'light'
 }
 
-export function ContextMenu({ x, y, items, onClose, theme }: Props) {
+export function ContextMenu({ x, y, items, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
 

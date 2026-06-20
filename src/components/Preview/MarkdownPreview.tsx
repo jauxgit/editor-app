@@ -24,7 +24,7 @@ export interface TocItem {
 
 function extractToc(html: string): TocItem[] {
   const items: TocItem[] = [];
-  const re = /<h([1-3])\s[^>]*?id="([^"]*)"[^>]*>(.*?)<\/h\1>/gi;
+  const re = /<h([1-6])\s[^>]*?id="([^"]*)"[^>]*>(.*?)<\/h\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     items.push({
@@ -106,7 +106,7 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange, onTocCha
   // Scroll-spy：IntersectionObserver 高亮当前标题
   useEffect(() => {
     if (!ref.current || tocItems.length === 0) return;
-    const headings = ref.current.querySelectorAll('h1[id], h2[id], h3[id]');
+    const headings = ref.current.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
     if (headings.length === 0) return;
 
     const observer = new IntersectionObserver(
