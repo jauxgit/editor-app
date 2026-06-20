@@ -124,6 +124,35 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange, onTocCha
     return () => observer.disconnect();
   }, [html, tocItems]);
 
+  // 代码块复制按钮
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest('.code-copy-btn');
+      if (!btn) return;
+
+      const wrapper = (btn as HTMLElement).closest('.code-block-wrapper');
+      if (!wrapper) return;
+
+      const pre = wrapper.querySelector('pre');
+      if (!pre) return;
+
+      const code = pre.textContent || '';
+      navigator.clipboard.writeText(code).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<span style="font-size:11px">✓</span>';
+        btn.setAttribute('data-copied', 'true');
+        setTimeout(() => {
+          btn.innerHTML = original;
+          btn.removeAttribute('data-copied');
+        }, 1500);
+      });
+    };
+    el.addEventListener('click', handler);
+    return () => el.removeEventListener('click', handler);
+  }, []);
+
   return (
     <div className="h-full">
       <div

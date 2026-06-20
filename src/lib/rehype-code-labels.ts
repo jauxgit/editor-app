@@ -79,7 +79,7 @@ export function rehypeMarkExplicitLanguage() {
   }
 }
 
-/** 在 rehypeHighlight 之后运行：给有语言标记的 `<pre>` 添加语言标签 */
+/** 在 rehypeHighlight 之后运行：给有语言标记的 `<pre>` 添加语言标签 + 复制按钮 */
 export function rehypeCodeLabels() {
   return function (tree: Root) {
     visitElement(tree as unknown as Element, (node: Element, index: number, parent: Element) => {
@@ -98,12 +98,45 @@ export function rehypeCodeLabels() {
         children: [
           {
             type: 'element',
-            tagName: 'span',
-            properties: {
-              className: ['code-lang-label'],
-              ...({ title: displayName } as Record<string, unknown>),
-            },
-            children: [{ type: 'text', value: displayName }],
+            tagName: 'div',
+            properties: { className: ['code-header'] },
+            children: [
+              {
+                type: 'element',
+                tagName: 'span',
+                properties: {
+                  className: ['code-lang-label'],
+                  ...({ title: displayName } as Record<string, unknown>),
+                },
+                children: [{ type: 'text', value: displayName }],
+              },
+              {
+                type: 'element',
+                tagName: 'button',
+                properties: {
+                  className: ['code-copy-btn'],
+                  title: 'Copy code',
+                },
+                children: [{
+                  type: 'element',
+                  tagName: 'svg',
+                  properties: {
+                    width: '14',
+                    height: '14',
+                    viewBox: '0 0 24 24',
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    'stroke-width': '2',
+                    'stroke-linecap': 'round',
+                    'stroke-linejoin': 'round',
+                  },
+                  children: [
+                    { type: 'element', tagName: 'rect', properties: { x: '9', y: '9', width: '13', height: '13', rx: '2', ry: '2' }, children: [] },
+                    { type: 'element', tagName: 'path', properties: { d: 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' }, children: [] },
+                  ],
+                }],
+              },
+            ],
           },
           node,
         ],
