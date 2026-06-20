@@ -403,7 +403,6 @@ export function FileTree() {
             y={ctxMenu.y}
             items={ctxMenuItems}
             onClose={() => setCtxMenu(null)}
-            theme={useEditorStore.getState().theme}
           />
         )}
       </div>
