@@ -55,6 +55,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': 'Preview',
     'toolbar.split': 'Split',
     'toolbar.noFolderOpen': 'No folder open',
+    'toolbar.changes': 'Changes',
 
     // Status bar
     'status.lines': '{n} lines',
@@ -71,6 +72,11 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': 'Empty folder',
     'fileTree.hint': 'Open a folder to start',
     'fileTree.addFile': 'New File',
+
+    // Changes panel
+    'changesPanel.title': 'Changes',
+    'changesPanel.empty': 'No changes',
+    'changesPanel.notRepo': 'Not a git repository',
 
     // Sidebar tabs
     'sidebar.tabFiles': 'Files',
@@ -168,6 +174,36 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.downloading': 'Downloading... {percent}%',
     'about.downloadComplete': 'Download complete',
     'about.openFile': 'Open File',
+
+    // Git
+    'menu.git': 'Git',
+    'menu.gitCommit': 'Commit...',
+    'menu.gitPull': 'Pull',
+    'menu.gitPush': 'Push',
+    'cmd.git.status': 'Git: Status',
+    'cmd.git.commit': 'Git: Commit',
+    'cmd.git.pull': 'Git: Pull',
+    'cmd.git.push': 'Git: Push',
+    'cmd.category.git': 'Git',
+    'git.commitTitle': 'Git Commit',
+    'git.commitPlaceholder': 'Commit message (Ctrl+Enter to commit)',
+    'git.commitBtn': 'Commit',
+    'git.commitAndPush': 'Commit & Push',
+    'git.commitSuccess': '✓ Commit successful',
+    'git.commitFailed': '✗ Commit failed',
+    'git.pushResult': 'Push: {msg}',
+    'git.noChanges': 'No changes to commit',
+    'git.notRepo': 'Not a git repository',
+    'git.committing': 'Committing...',
+    'git.staged': 'staged',
+    'git.cancel': 'Cancel',
+    'git.diffTitle': 'Diff',
+    'git.diffNoChanges': 'No changes',
+    'git.diffError': 'Error loading diff',
+    'git.diffLoading': 'Loading diff...',
+    'git.diffTimeout': 'Diff timed out',
+    'git.close': 'Close',
+    'git.showDiff': 'Show Diff',
   },
   zh: {
     'menu.file': '文件',
@@ -218,6 +254,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': '预览',
     'toolbar.split': '分屏',
     'toolbar.noFolderOpen': '未打开文件夹',
+    'toolbar.changes': '变更',
 
     'status.lines': '{n} 行',
     'status.noFile': '—',
@@ -231,6 +268,11 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
+
+    // Changes panel
+    'changesPanel.title': '变更',
+    'changesPanel.empty': '无变更',
+    'changesPanel.notRepo': '不是 Git 仓库',
 
     // Sidebar tabs
     'sidebar.tabFiles': '文件',
@@ -323,6 +365,36 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.downloading': '正在下载... {percent}%',
     'about.downloadComplete': '下载完成',
     'about.openFile': '打开文件',
+
+    // Git
+    'menu.git': 'Git',
+    'menu.gitCommit': '提交...',
+    'menu.gitPull': '拉取',
+    'menu.gitPush': '推送',
+    'cmd.git.status': 'Git: 状态',
+    'cmd.git.commit': 'Git: 提交',
+    'cmd.git.pull': 'Git: 拉取',
+    'cmd.git.push': 'Git: 推送',
+    'cmd.category.git': 'Git',
+    'git.commitTitle': 'Git 提交',
+    'git.commitPlaceholder': '提交信息 (Ctrl+Enter 提交)',
+    'git.commitBtn': '提交',
+    'git.commitAndPush': '提交并推送',
+    'git.commitSuccess': '✓ 提交成功',
+    'git.commitFailed': '✗ 提交失败',
+    'git.pushResult': '推送: {msg}',
+    'git.noChanges': '无变更可提交',
+    'git.notRepo': '不是 Git 仓库',
+    'git.committing': '正在提交...',
+    'git.staged': '已暂存',
+    'git.cancel': '取消',
+    'git.diffTitle': '差异',
+    'git.diffNoChanges': '无变更',
+    'git.diffError': '加载差异失败',
+    'git.diffLoading': '正在加载差异...',
+    'git.diffTimeout': '差异加载超时',
+    'git.close': '关闭',
+    'git.showDiff': '查看差异',
   },
 }
 

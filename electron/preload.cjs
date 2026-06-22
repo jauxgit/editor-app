@@ -53,6 +53,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('download:progress', (_e, data) => callback(data))
   },
 
+  // ===== Git 操作 =====
+  execGit: (cwd, args) => ipcRenderer.invoke('git:exec', cwd, args),
+
   // ===== 窗口控制（Windows frameless） =====
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),

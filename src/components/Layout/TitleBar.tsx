@@ -275,6 +275,29 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
       ],
     },
     {
+      id: 'git',
+      label: t('menu.git'),
+      items: [
+        {
+          id: 'git-commit',
+          label: t('menu.gitCommit'),
+          shortcut: 'Ctrl+Shift+C',
+          action: () => window.dispatchEvent(new CustomEvent('open-git-commit')),
+        },
+        { id: 'sep-git1', divider: true, label: '' },
+        {
+          id: 'git-pull',
+          label: t('menu.gitPull'),
+          action: () => window.dispatchEvent(new CustomEvent('git-pull')),
+        },
+        {
+          id: 'git-push',
+          label: t('menu.gitPush'),
+          action: () => window.dispatchEvent(new CustomEvent('git-push')),
+        },
+      ],
+    },
+    {
       id: 'help',
       label: t('menu.help'),
       items: [

@@ -12,6 +12,7 @@ interface EditorState {
   /** Theme ID — see lib/editorThemes.ts for available themes */
   theme: string
   showFileTree: boolean
+  showChangesPanel: boolean
   /** Sidebar width in pixels — persisted for drag-to-resize */
   sidebarWidth: number
   highlightTheme: HighlightThemeId
@@ -26,6 +27,7 @@ interface EditorState {
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
+  toggleChangesPanel: () => void
   /** Switch to the next/prev theme (cycling through the available themes) */
   cycleTheme: () => void
   /** Set a specific theme by ID */
@@ -46,6 +48,7 @@ export const useEditorStore = create<EditorState>()(
       viewMode: 'source',
       theme: DEFAULT_THEME_ID,
       showFileTree: true,
+      showChangesPanel: false,
       sidebarWidth: 260,
       highlightTheme: 'github',
       language: 'en',
@@ -57,6 +60,7 @@ export const useEditorStore = create<EditorState>()(
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
+      toggleChangesPanel: () => set(s => ({ showChangesPanel: !s.showChangesPanel })),
       cycleTheme: () => set(s => {
         const idx = editorThemes.findIndex(t => t.id === s.theme)
         const next = (idx + 1) % editorThemes.length

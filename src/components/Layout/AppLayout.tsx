@@ -15,12 +15,19 @@ import { PluginManager } from '../Settings/PluginManager';
 import { SettingsDialog } from '../Settings/SettingsDialog';
 import { CommandPalette, useRegisterCommands } from './CommandPalette';
 import { TitleBar } from './TitleBar';
+import { CommitDialog } from '../Git/CommitDialog';
+import { ChangesPanel } from '../Git/ChangesPanel';
+import { DiffView } from '../Git/DiffView';
+import { GitStatusBadge } from '../Git/GitStatusBadge';
+import { useGitStore } from '../../stores/gitStore';
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [gitCommitOpen, setGitCommitOpen] = useState(false);
+  const [diffFile, setDiffFile] = useState<{ filePath: string; changeStatus: string } | null>(null);
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined);
   const [sidebarTab, setSidebarTab] = useState<'files' | 'outline'>('files');
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
@@ -91,6 +98,10 @@ export function AppLayout() {
   const theme = useEditorStore((s) => s.theme);
   const cycleTheme = useEditorStore((s) => s.cycleTheme);
   const themeDef = getTheme(theme) || editorThemes[0];
+  const toggleChangesPanel = useEditorStore((s) => s.toggleChangesPanel);
+  const showChangesPanel = useEditorStore((s) => s.showChangesPanel);
+  const isGitRepo = useGitStore((s) => s.isGitRepo);
+  const changes = useGitStore((s) => s.changes);
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
@@ -149,6 +160,17 @@ export function AppLayout() {
       }
     })();
   }, []);
+
+  // Git 状态自动刷新 — root 变化时检查是否为 git 仓库并拉取状态
+  const refreshGitStatus = useGitStore((s) => s.refreshStatus);
+  const resetGit = useGitStore((s) => s.reset);
+  useEffect(() => {
+    if (root) {
+      refreshGitStatus(root);
+    } else {
+      resetGit();
+    }
+  }, [root, refreshGitStatus, resetGit]);
 
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback(
@@ -270,6 +292,48 @@ export function AppLayout() {
     const handler = () => setAboutOpen(true);
     window.addEventListener('open-about', handler);
     return () => window.removeEventListener('open-about', handler);
+  }, []);
+
+  // Git Commit 对话框事件
+  useEffect(() => {
+    const handler = () => setGitCommitOpen(true);
+    window.addEventListener('open-git-commit', handler);
+    return () => window.removeEventListener('open-git-commit', handler);
+  }, []);
+
+  // Git Diff 对话框事件
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ filePath: string; changeStatus: string }>) => {
+      setDiffFile(e.detail);
+    };
+    window.addEventListener('open-git-diff', handler as EventListener);
+    return () => window.removeEventListener('open-git-diff', handler as EventListener);
+  }, []);
+
+  // Git Pull / Push 事件（从菜单触发）
+  useEffect(() => {
+    const handlePull = async () => {
+      const ws = useWorkspaceStore.getState();
+      const gs = useGitStore.getState();
+      if (ws.root) {
+        const result = await gs.pull(ws.root);
+        console.log('[git] pull:', result);
+      }
+    };
+    const handlePush = async () => {
+      const ws = useWorkspaceStore.getState();
+      const gs = useGitStore.getState();
+      if (ws.root) {
+        const result = await gs.push(ws.root);
+        console.log('[git] push:', result);
+      }
+    };
+    window.addEventListener('git-pull', handlePull);
+    window.addEventListener('git-push', handlePush);
+    return () => {
+      window.removeEventListener('git-pull', handlePull);
+      window.removeEventListener('git-push', handlePush);
+    };
   }, []);
 
   // Settings 对话框事件
@@ -422,6 +486,13 @@ export function AppLayout() {
       <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
       <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <CommitDialog isOpen={gitCommitOpen} onClose={() => setGitCommitOpen(false)} />
+      <DiffView
+        isOpen={!!diffFile}
+        filePath={diffFile?.filePath || ''}
+        changeStatus={diffFile?.changeStatus || ''}
+        onClose={() => setDiffFile(null)}
+      />
       {isDragOver && (
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
       )}
@@ -551,6 +622,55 @@ export function AppLayout() {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Git Changes toggle */}
+            {isGitRepo && (
+              <button
+                onClick={toggleChangesPanel}
+                className="relative flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+                style={{
+                  color: showChangesPanel ? 'var(--accent)' : 'var(--text-secondary)',
+                  background: showChangesPanel ? 'var(--accent-muted)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (!showChangesPanel) e.currentTarget.style.background = 'var(--bg-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!showChangesPanel) e.currentTarget.style.background = 'transparent';
+                }}
+                title={t('toolbar.changes')}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="5" cy="5" r="2" />
+                  <circle cx="11" cy="13" r="2" />
+                  <line x1="7" y1="6" x2="10" y2="12" />
+                  <polyline points="11,5 14,5 14,8" />
+                  <line x1="14" y1="5" x2="9" y2="10" />
+                </svg>
+                {/* Change count badge */}
+                {changes.length > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[14px] h-[14px] rounded-full text-[9px] font-bold leading-none"
+                    style={{
+                      background: 'var(--accent)',
+                      color: '#fff',
+                      padding: '0 3px',
+                    }}
+                  >
+                    {changes.length > 99 ? '99+' : changes.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Theme toggle — cycles through available themes */}
             <button
               onClick={cycleTheme}
@@ -635,15 +755,17 @@ export function AppLayout() {
                 </div>
 
                 {/* Tab content */}
-                {sidebarTab === 'files' ? (
-                  <FileTree />
-                ) : (
-                  <TocView
-                    items={tocItems}
-                    activeId={activeTocId}
-                    onItemClick={handleTocItemClick}
-                  />
-                )}
+                <div key={sidebarTab} className="flex-1 overflow-hidden animate-tab-fade-in">
+                  {sidebarTab === 'files' ? (
+                    <FileTree />
+                  ) : (
+                    <TocView
+                      items={tocItems}
+                      activeId={activeTocId}
+                      onItemClick={handleTocItemClick}
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -778,6 +900,21 @@ export function AppLayout() {
               )}
             </div>
           </div>
+
+          {/* Git Changes Panel (right side) */}
+          <div
+            className="shrink-0 border-l overflow-hidden"
+            style={{
+              width: showChangesPanel ? '260px' : '0px',
+              borderColor: 'var(--border)',
+              transition: 'width 0.2s ease',
+            }}
+          >
+            <div className="w-[260px] h-full">
+              <ChangesPanel />
+            </div>
+          </div>
+
         </div>
 
         {/* ===== Status Bar ===== */}
@@ -807,6 +944,10 @@ export function AppLayout() {
             {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
           </span>
           <span>{viewModeLabels[viewMode]}</span>
+
+          {/* Git 分支 + 变更数 */}
+          <GitStatusBadge />
+
           <span className="ml-auto">{t('status.utf8')}</span>
           <span>{t('status.markdown')}</span>
           <span>{fontSize}px</span>

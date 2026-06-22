@@ -4,6 +4,33 @@ export interface FileEntry {
   path: string
 }
 
+export interface GitResult {
+  stdout: string
+  stderr: string
+  code: number
+}
+
+export interface GitChange {
+  /** 文件路径（相对于仓库根目录） */
+  path: string
+  /** 工作区状态：'M' 修改, 'A' 新增, 'D' 删除, '??' 未跟踪, 'R' 重命名, 'C' 复制 */
+  status: string
+  /** 是否已暂存 */
+  staged: boolean
+}
+
+export interface GitLogEntry {
+  hash: string
+  message: string
+  author: string
+  date: string
+}
+
+export interface DiffLine {
+  type: 'header' | 'context' | 'add' | 'remove'
+  text: string
+}
+
 export interface PluginManifest {
   id: string
   name: string
@@ -48,6 +75,8 @@ export interface ElectronAPI {
   // 下载更新
   startDownload: (url: string, filename?: string) => Promise<{ success: boolean; filePath?: string; reason?: string }>
   onDownloadProgress: (callback: (data: { received: number; total: number; percent: number; done?: boolean; filePath?: string }) => void) => void
+  // Git 操作
+  execGit: (cwd: string, args: string[]) => Promise<GitResult>
 
   // 窗口控制（Windows frameless）
   minimizeWindow: () => Promise<void>
