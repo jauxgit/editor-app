@@ -207,6 +207,14 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // 窗口关闭时清理所有 git 子进程
+  win.on('close', () => {
+    for (const child of gitChildProcesses) {
+      try { child.kill(); } catch {}
+    }
+    gitChildProcesses.clear();
+  });
+
   return win;
 }
 
@@ -500,6 +508,9 @@ ipcMain.handle('plugins:scan', async () => {
 });
 
 // ===== Git 操作 =====
+/** 正在运行的 git 子进程集合（用于窗口关闭时清理） */
+const gitChildProcesses = new Set();
+
 ipcMain.handle('git:exec', async (_e, cwd, args) => {
   if (!cwd || !args || !Array.isArray(args)) {
     return { stdout: '', stderr: 'Invalid arguments', code: 1 };
@@ -509,16 +520,19 @@ ipcMain.handle('git:exec', async (_e, cwd, args) => {
     return { stdout: '', stderr: 'Directory not found: ' + cwd, code: 1 };
   }
   try {
-    const child = execFile('git', args, { cwd, timeout: 30000 });
+    const child = execFile('git', args, { cwd, timeout: 15000 });
+    gitChildProcesses.add(child);
     return new Promise((resolve) => {
       let stdout = '';
       let stderr = '';
       child.stdout?.on('data', (chunk) => { stdout += chunk; });
       child.stderr?.on('data', (chunk) => { stderr += chunk; });
       child.on('close', (code) => {
+        gitChildProcesses.delete(child);
         resolve({ stdout, stderr, code });
       });
       child.on('error', (err) => {
+        gitChildProcesses.delete(child);
         resolve({ stdout: '', stderr: err.message, code: -1 });
       });
     });
@@ -543,6 +557,11 @@ ipcMain.handle('window:maximize', () => {
 });
 
 ipcMain.handle('window:close', () => {
+  // 清理正在运行的 git 子进程，防止渲染进程等待 IPC 响应而卡死
+  for (const child of gitChildProcesses) {
+    try { child.kill(); } catch {}
+  }
+  gitChildProcesses.clear();
   const win = BrowserWindow.getFocusedWindow();
   if (win) win.close();
 });

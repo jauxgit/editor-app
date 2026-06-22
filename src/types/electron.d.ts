@@ -26,6 +26,11 @@ export interface GitLogEntry {
   date: string
 }
 
+export interface DiffLine {
+  type: 'header' | 'context' | 'add' | 'remove'
+  text: string
+}
+
 export interface PluginManifest {
   id: string
   name: string

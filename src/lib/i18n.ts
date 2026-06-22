@@ -55,6 +55,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': 'Preview',
     'toolbar.split': 'Split',
     'toolbar.noFolderOpen': 'No folder open',
+    'toolbar.changes': 'Changes',
 
     // Status bar
     'status.lines': '{n} lines',
@@ -71,6 +72,11 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': 'Empty folder',
     'fileTree.hint': 'Open a folder to start',
     'fileTree.addFile': 'New File',
+
+    // Changes panel
+    'changesPanel.title': 'Changes',
+    'changesPanel.empty': 'No changes',
+    'changesPanel.notRepo': 'Not a git repository',
 
     // Sidebar tabs
     'sidebar.tabFiles': 'Files',
@@ -191,6 +197,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'git.committing': 'Committing...',
     'git.staged': 'staged',
     'git.cancel': 'Cancel',
+    'git.diffTitle': 'Diff',
+    'git.diffNoChanges': 'No changes',
+    'git.diffError': 'Error loading diff',
+    'git.diffLoading': 'Loading diff...',
+    'git.diffTimeout': 'Diff timed out',
+    'git.close': 'Close',
+    'git.showDiff': 'Show Diff',
   },
   zh: {
     'menu.file': '文件',
@@ -241,6 +254,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': '预览',
     'toolbar.split': '分屏',
     'toolbar.noFolderOpen': '未打开文件夹',
+    'toolbar.changes': '变更',
 
     'status.lines': '{n} 行',
     'status.noFile': '—',
@@ -254,6 +268,11 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
+
+    // Changes panel
+    'changesPanel.title': '变更',
+    'changesPanel.empty': '无变更',
+    'changesPanel.notRepo': '不是 Git 仓库',
 
     // Sidebar tabs
     'sidebar.tabFiles': '文件',
@@ -369,6 +388,13 @@ const messages: Record<Lang, Record<string, string>> = {
     'git.committing': '正在提交...',
     'git.staged': '已暂存',
     'git.cancel': '取消',
+    'git.diffTitle': '差异',
+    'git.diffNoChanges': '无变更',
+    'git.diffError': '加载差异失败',
+    'git.diffLoading': '正在加载差异...',
+    'git.diffTimeout': '差异加载超时',
+    'git.close': '关闭',
+    'git.showDiff': '查看差异',
   },
 }
 

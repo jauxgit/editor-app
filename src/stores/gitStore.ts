@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GitChange, GitLogEntry, GitResult } from '../types/electron'
+import type { DiffLine, GitChange, GitLogEntry, GitResult } from '../types/electron'
 
 export interface GitState {
   branch: string | null
@@ -21,6 +21,8 @@ export interface GitState {
   push: (root: string) => Promise<string>
   /** 获取最近提交日志 */
   refreshLog: (root: string) => Promise<void>
+  /** 获取某个文件的 unified diff */
+  getDiff: (root: string, filePath: string, changeStatus: string) => Promise<DiffLine[]>
   /** 重置状态（例如根目录变化时） */
   reset: () => void
 }
@@ -52,6 +54,26 @@ function parseLog(stdout: string): GitLogEntry[] {
     }
     return { hash: line, message: line, author: '', date: '' }
   })
+}
+
+/** 解析 `git diff` unified diff 输出为 DiffLine[] */
+function parseUnifiedDiff(stdout: string): DiffLine[] {
+  const result: DiffLine[] = []
+  const lines = stdout.split('\n')
+  for (const rawLine of lines) {
+    if (rawLine.startsWith('@@')) {
+      result.push({ type: 'header', text: rawLine })
+    } else if (rawLine.startsWith('---') || rawLine.startsWith('+++')) {
+      result.push({ type: 'header', text: rawLine })
+    } else if (rawLine.startsWith('+')) {
+      result.push({ type: 'add', text: rawLine.slice(1) })
+    } else if (rawLine.startsWith('-')) {
+      result.push({ type: 'remove', text: rawLine.slice(1) })
+    } else if (rawLine.startsWith(' ')) {
+      result.push({ type: 'context', text: rawLine.slice(1) })
+    }
+  }
+  return result
 }
 
 export const useGitStore = create<GitState>((set, get) => ({
@@ -104,6 +126,57 @@ export const useGitStore = create<GitState>((set, get) => ({
     if (result.code === 0) {
       set({ log: parseLog(result.stdout) })
     }
+  },
+
+  getDiff: async (root: string, filePath: string, changeStatus: string): Promise<DiffLine[]> => {
+    const api = window.electronAPI
+    if (!api) return []
+
+    // 未跟踪文件（??）— 全量新增
+    if (changeStatus === '??' || changeStatus === '?') {
+      try {
+        const fileResult = await api.readFile(filePath)
+        const lines = fileResult.content.split('\n')
+        return [
+          { type: 'header', text: '--- /dev/null' },
+          { type: 'header', text: `+++ ${filePath.split('/').pop() || 'file'}` },
+          { type: 'header', text: '@@ -0,0 +1,' + lines.length + ' @@' },
+          ...lines.map((line) => ({ type: 'add' as const, text: line })),
+        ]
+      } catch {
+        return [{ type: 'header', text: 'Error: Could not read file' }]
+      }
+    }
+
+    // 已删除文件（D）— 从 HEAD 读原内容，全量删除
+    if (changeStatus === 'D') {
+      const repoRelative = filePath.replace(root, '').replace(/^[/\\]/, '')
+      const result: GitResult = await api.execGit(root, ['show', `HEAD:${repoRelative}`])
+      if (result.code === 0) {
+        const lines = result.stdout.split('\n')
+        return [
+          { type: 'header', text: `--- ${filePath.split('/').pop() || 'file'}` },
+          { type: 'header', text: '+++ /dev/null' },
+          { type: 'header', text: '@@ -1,' + lines.length + ' +0,0 @@' },
+          ...lines.map((line) => ({ type: 'remove' as const, text: line })),
+        ]
+      }
+      return [{ type: 'header', text: 'Error: File no longer in HEAD' }]
+    }
+
+    // 普通 diff：三级回退
+    // 1. git diff HEAD -- <file>    （工作区 vs HEAD）
+    // 2. git diff --cached -- <file> （暂存区 vs HEAD）
+    // 3. git diff -- <file>         （工作区 vs 暂存区）
+    const repoRelative = filePath.replace(root, '').replace(/^[/\\]/, '')
+    const r1: GitResult = await api.execGit(root, ['diff', 'HEAD', '--', repoRelative])
+    if (r1.code === 0 && r1.stdout.trim()) return parseUnifiedDiff(r1.stdout)
+    const r2: GitResult = await api.execGit(root, ['diff', '--cached', '--', repoRelative])
+    if (r2.code === 0 && r2.stdout.trim()) return parseUnifiedDiff(r2.stdout)
+    const r3: GitResult = await api.execGit(root, ['diff', '--', repoRelative])
+    if (r3.code === 0 && r3.stdout.trim()) return parseUnifiedDiff(r3.stdout)
+
+    return [{ type: 'header', text: 'No diff output available' }]
   },
 
   commit: async (root: string, message: string): Promise<boolean> => {
