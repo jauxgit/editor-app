@@ -9,6 +9,7 @@ import {
   protocol,
   shell,
 } from 'electron';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
@@ -495,6 +496,34 @@ ipcMain.handle('plugins:scan', async () => {
     return plugins;
   } catch {
     return [];
+  }
+});
+
+// ===== Git 操作 =====
+ipcMain.handle('git:exec', async (_e, cwd, args) => {
+  if (!cwd || !args || !Array.isArray(args)) {
+    return { stdout: '', stderr: 'Invalid arguments', code: 1 };
+  }
+  // 安全检查：cwd 必须存在
+  if (!existsSync(cwd)) {
+    return { stdout: '', stderr: 'Directory not found: ' + cwd, code: 1 };
+  }
+  try {
+    const child = execFile('git', args, { cwd, timeout: 30000 });
+    return new Promise((resolve) => {
+      let stdout = '';
+      let stderr = '';
+      child.stdout?.on('data', (chunk) => { stdout += chunk; });
+      child.stderr?.on('data', (chunk) => { stderr += chunk; });
+      child.on('close', (code) => {
+        resolve({ stdout, stderr, code });
+      });
+      child.on('error', (err) => {
+        resolve({ stdout: '', stderr: err.message, code: -1 });
+      });
+    });
+  } catch (err) {
+    return { stdout: '', stderr: err.message, code: -1 };
   }
 });
 

@@ -15,12 +15,16 @@ import { PluginManager } from '../Settings/PluginManager';
 import { SettingsDialog } from '../Settings/SettingsDialog';
 import { CommandPalette, useRegisterCommands } from './CommandPalette';
 import { TitleBar } from './TitleBar';
+import { CommitDialog } from '../Git/CommitDialog';
+import { GitStatusBadge } from '../Git/GitStatusBadge';
+import { useGitStore } from '../../stores/gitStore';
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined);
   const [sidebarTab, setSidebarTab] = useState<'files' | 'outline'>('files');
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
@@ -150,6 +154,17 @@ export function AppLayout() {
     })();
   }, []);
 
+  // Git 状态自动刷新 — root 变化时检查是否为 git 仓库并拉取状态
+  const refreshGitStatus = useGitStore((s) => s.refreshStatus);
+  const resetGit = useGitStore((s) => s.reset);
+  useEffect(() => {
+    if (root) {
+      refreshGitStatus(root);
+    } else {
+      resetGit();
+    }
+  }, [root, refreshGitStatus, resetGit]);
+
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -270,6 +285,39 @@ export function AppLayout() {
     const handler = () => setAboutOpen(true);
     window.addEventListener('open-about', handler);
     return () => window.removeEventListener('open-about', handler);
+  }, []);
+
+  // Git Commit 对话框事件
+  useEffect(() => {
+    const handler = () => setGitCommitOpen(true);
+    window.addEventListener('open-git-commit', handler);
+    return () => window.removeEventListener('open-git-commit', handler);
+  }, []);
+
+  // Git Pull / Push 事件（从菜单触发）
+  useEffect(() => {
+    const handlePull = async () => {
+      const ws = useWorkspaceStore.getState();
+      const gs = useGitStore.getState();
+      if (ws.root) {
+        const result = await gs.pull(ws.root);
+        console.log('[git] pull:', result);
+      }
+    };
+    const handlePush = async () => {
+      const ws = useWorkspaceStore.getState();
+      const gs = useGitStore.getState();
+      if (ws.root) {
+        const result = await gs.push(ws.root);
+        console.log('[git] push:', result);
+      }
+    };
+    window.addEventListener('git-pull', handlePull);
+    window.addEventListener('git-push', handlePush);
+    return () => {
+      window.removeEventListener('git-pull', handlePull);
+      window.removeEventListener('git-push', handlePush);
+    };
   }, []);
 
   // Settings 对话框事件
@@ -422,6 +470,7 @@ export function AppLayout() {
       <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
       <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <CommitDialog isOpen={gitCommitOpen} onClose={() => setGitCommitOpen(false)} />
       {isDragOver && (
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
       )}
@@ -807,6 +856,10 @@ export function AppLayout() {
             {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
           </span>
           <span>{viewModeLabels[viewMode]}</span>
+
+          {/* Git 分支 + 变更数 */}
+          <GitStatusBadge />
+
           <span className="ml-auto">{t('status.utf8')}</span>
           <span>{t('status.markdown')}</span>
           <span>{fontSize}px</span>
