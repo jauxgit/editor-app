@@ -55,10 +55,11 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': 'Preview',
     'toolbar.split': 'Split',
     'toolbar.noFolderOpen': 'No folder open',
-    'toolbar.changes': 'Changes',
 
     // Status bar
     'status.lines': '{n} lines',
+    'status.words': '{n} words',
+    'status.chars': '{n} chars',
     'status.noFile': '—',
     'status.utf8': 'UTF-8',
     'status.markdown': 'Markdown',
@@ -72,11 +73,6 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': 'Empty folder',
     'fileTree.hint': 'Open a folder to start',
     'fileTree.addFile': 'New File',
-
-    // Changes panel
-    'changesPanel.title': 'Changes',
-    'changesPanel.empty': 'No changes',
-    'changesPanel.notRepo': 'Not a git repository',
 
     // Sidebar tabs
     'sidebar.tabFiles': 'Files',
@@ -94,6 +90,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.preview': 'View: Preview Mode',
     'cmd.view.split': 'View: Split Mode',
     'cmd.view.toggleFileTree': 'View: Toggle File Tree',
+    'cmd.view.search': 'View: Toggle Search',
     'cmd.view.toggleTheme': 'View: Toggle Dark/Light Theme',
     'cmd.file.new': 'File: New File',
     'cmd.file.open': 'File: Open File',
@@ -156,6 +153,15 @@ const messages: Record<Lang, Record<string, string>> = {
     'settings.fontSize': 'Font Size',
     'settings.font': 'Font',
     'settings.highlightTheme': 'Highlight Theme',
+    'settings.autoSave': 'Auto Save',
+
+    // Global search
+    'search.title': 'Search',
+    'search.placeholder': 'Search files...',
+    'search.noFolder': 'Open a folder to search',
+    'search.searching': 'Searching...',
+    'search.noResults': 'No results found',
+    'search.resultsCount': '{n} results',
 
     // Drag and drop
     'drag.trust.title': 'Trust Folder',
@@ -174,36 +180,6 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.downloading': 'Downloading... {percent}%',
     'about.downloadComplete': 'Download complete',
     'about.openFile': 'Open File',
-
-    // Git
-    'menu.git': 'Git',
-    'menu.gitCommit': 'Commit...',
-    'menu.gitPull': 'Pull',
-    'menu.gitPush': 'Push',
-    'cmd.git.status': 'Git: Status',
-    'cmd.git.commit': 'Git: Commit',
-    'cmd.git.pull': 'Git: Pull',
-    'cmd.git.push': 'Git: Push',
-    'cmd.category.git': 'Git',
-    'git.commitTitle': 'Git Commit',
-    'git.commitPlaceholder': 'Commit message (Ctrl+Enter to commit)',
-    'git.commitBtn': 'Commit',
-    'git.commitAndPush': 'Commit & Push',
-    'git.commitSuccess': '✓ Commit successful',
-    'git.commitFailed': '✗ Commit failed',
-    'git.pushResult': 'Push: {msg}',
-    'git.noChanges': 'No changes to commit',
-    'git.notRepo': 'Not a git repository',
-    'git.committing': 'Committing...',
-    'git.staged': 'staged',
-    'git.cancel': 'Cancel',
-    'git.diffTitle': 'Diff',
-    'git.diffNoChanges': 'No changes',
-    'git.diffError': 'Error loading diff',
-    'git.diffLoading': 'Loading diff...',
-    'git.diffTimeout': 'Diff timed out',
-    'git.close': 'Close',
-    'git.showDiff': 'Show Diff',
   },
   zh: {
     'menu.file': '文件',
@@ -254,9 +230,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'toolbar.preview': '预览',
     'toolbar.split': '分屏',
     'toolbar.noFolderOpen': '未打开文件夹',
-    'toolbar.changes': '变更',
 
     'status.lines': '{n} 行',
+    'status.words': '{n} 词',
+    'status.chars': '{n} 字',
     'status.noFile': '—',
     'status.utf8': 'UTF-8',
     'status.markdown': 'Markdown',
@@ -268,11 +245,6 @@ const messages: Record<Lang, Record<string, string>> = {
     'fileTree.empty': '空文件夹',
     'fileTree.hint': '打开文件夹开始',
     'fileTree.addFile': '新建文件',
-
-    // Changes panel
-    'changesPanel.title': '变更',
-    'changesPanel.empty': '无变更',
-    'changesPanel.notRepo': '不是 Git 仓库',
 
     // Sidebar tabs
     'sidebar.tabFiles': '文件',
@@ -288,6 +260,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'cmd.view.preview': '视图: 预览模式',
     'cmd.view.split': '视图: 分屏模式',
     'cmd.view.toggleFileTree': '视图: 切换文件树',
+    'cmd.view.search': '视图: 切换搜索面板',
     'cmd.view.toggleTheme': '视图: 切换明暗主题',
     'cmd.file.new': '文件: 新建文件',
     'cmd.file.open': '文件: 打开文件',
@@ -347,6 +320,15 @@ const messages: Record<Lang, Record<string, string>> = {
     'settings.fontSize': '字号',
     'settings.font': '字体',
     'settings.highlightTheme': '高亮主题',
+    'settings.autoSave': '自动保存',
+
+    // Global search
+    'search.title': '搜索',
+    'search.placeholder': '搜索文件...',
+    'search.noFolder': '打开文件夹以搜索',
+    'search.searching': '搜索中...',
+    'search.noResults': '未找到结果',
+    'search.resultsCount': '共 {n} 个结果',
 
     // Drag and drop
     'drag.trust.title': '信任文件夹',
@@ -365,36 +347,6 @@ const messages: Record<Lang, Record<string, string>> = {
     'about.downloading': '正在下载... {percent}%',
     'about.downloadComplete': '下载完成',
     'about.openFile': '打开文件',
-
-    // Git
-    'menu.git': 'Git',
-    'menu.gitCommit': '提交...',
-    'menu.gitPull': '拉取',
-    'menu.gitPush': '推送',
-    'cmd.git.status': 'Git: 状态',
-    'cmd.git.commit': 'Git: 提交',
-    'cmd.git.pull': 'Git: 拉取',
-    'cmd.git.push': 'Git: 推送',
-    'cmd.category.git': 'Git',
-    'git.commitTitle': 'Git 提交',
-    'git.commitPlaceholder': '提交信息 (Ctrl+Enter 提交)',
-    'git.commitBtn': '提交',
-    'git.commitAndPush': '提交并推送',
-    'git.commitSuccess': '✓ 提交成功',
-    'git.commitFailed': '✗ 提交失败',
-    'git.pushResult': '推送: {msg}',
-    'git.noChanges': '无变更可提交',
-    'git.notRepo': '不是 Git 仓库',
-    'git.committing': '正在提交...',
-    'git.staged': '已暂存',
-    'git.cancel': '取消',
-    'git.diffTitle': '差异',
-    'git.diffNoChanges': '无变更',
-    'git.diffError': '加载差异失败',
-    'git.diffLoading': '正在加载差异...',
-    'git.diffTimeout': '差异加载超时',
-    'git.close': '关闭',
-    'git.showDiff': '查看差异',
   },
 }
 

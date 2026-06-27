@@ -4,7 +4,6 @@ import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
 import { createNewFile } from '../../lib/commands'
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index'
-import { GitFileStatus } from '../Git/GitFileStatus'
 import type { FileEntry } from '../../types/electron'
 
 interface TreeNodeProps {
@@ -189,8 +188,6 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onCont
             {entry.name}
           </span>
         )}
-
-        {!entry.isDirectory && !renaming && <GitFileStatus filePath={entry.path} />}
 
         {/* "+" button for directories */}
         {entry.isDirectory && !renaming && (

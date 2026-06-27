@@ -12,7 +12,6 @@ interface EditorState {
   /** Theme ID — see lib/editorThemes.ts for available themes */
   theme: string
   showFileTree: boolean
-  showChangesPanel: boolean
   /** Sidebar width in pixels — persisted for drag-to-resize */
   sidebarWidth: number
   highlightTheme: HighlightThemeId
@@ -24,6 +23,10 @@ interface EditorState {
   font: string
   /** 编辑器字号（px） */
   fontSize: number
+  /** 自动保存开关 */
+  autoSave: boolean
+  /** 自动保存延迟（毫秒） */
+  autoSaveDelay: number
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
@@ -40,6 +43,8 @@ interface EditorState {
   setFont: (id: string) => void
   setFontSize: (n: number) => void
   setSidebarWidth: (w: number) => void
+  setAutoSave: (on: boolean) => void
+  setAutoSaveDelay: (ms: number) => void
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -48,7 +53,6 @@ export const useEditorStore = create<EditorState>()(
       viewMode: 'source',
       theme: DEFAULT_THEME_ID,
       showFileTree: true,
-      showChangesPanel: false,
       sidebarWidth: 260,
       highlightTheme: 'github',
       language: 'en',
@@ -57,10 +61,11 @@ export const useEditorStore = create<EditorState>()(
       disabledPlugins: [],
       font: DEFAULT_FONT_ID,
       fontSize: 14,
+      autoSave: true,
+      autoSaveDelay: 2000,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
-      toggleChangesPanel: () => set(s => ({ showChangesPanel: !s.showChangesPanel })),
       cycleTheme: () => set(s => {
         const idx = editorThemes.findIndex(t => t.id === s.theme)
         const next = (idx + 1) % editorThemes.length
@@ -90,6 +95,8 @@ export const useEditorStore = create<EditorState>()(
       setFont: (id) => set({ font: id }),
       setFontSize: (n) => set({ fontSize: n }),
       setSidebarWidth: (w) => set({ sidebarWidth: w }),
+      setAutoSave: (on) => set({ autoSave: on }),
+      setAutoSaveDelay: (ms) => set({ autoSaveDelay: ms }),
     }),
     {
       name: 'markedit-settings',
@@ -104,6 +111,8 @@ export const useEditorStore = create<EditorState>()(
         disabledPlugins: state.disabledPlugins,
         font: state.font,
         fontSize: state.fontSize,
+        autoSave: state.autoSave,
+        autoSaveDelay: state.autoSaveDelay,
       }),
     }
   )
