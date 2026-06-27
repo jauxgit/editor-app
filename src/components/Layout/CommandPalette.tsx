@@ -6,7 +6,6 @@ import { highlightThemes } from '../../lib/highlightThemes';
 import { useT } from '../../lib/i18n';
 import { usePlugins } from '../../lib/pluginRegistry';
 import { useEditorStore } from '../../stores/editorStore';
-import { useGitStore } from '../../stores/gitStore';
 import { nextUntitledId, useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface Props {
@@ -296,6 +295,12 @@ export function useRegisterCommands() {
         category: t('cmd.category.view'),
         action: toggleFileTree,
       },
+      {
+        id: 'view.search',
+        label: t('cmd.view.search'),
+        category: t('cmd.category.view'),
+        action: () => window.dispatchEvent(new CustomEvent('toggle-search-panel')),
+      },
       // 编辑器主题：每个主题一条命令
       ...editorThemes.map((et) => ({
         id: `theme.editor.${et.id}`,
@@ -362,45 +367,6 @@ export function useRegisterCommands() {
         label: `${t('cmd.category.language')}: ${t('language.zh')}`,
         category: t('cmd.category.language'),
         action: () => setLanguage('zh'),
-      },
-      // Git 命令
-      {
-        id: 'git.status',
-        label: t('cmd.git.status'),
-        category: t('cmd.category.git'),
-        action: () => window.dispatchEvent(new CustomEvent('open-git-commit')),
-      },
-      {
-        id: 'git.commit',
-        label: t('cmd.git.commit'),
-        category: t('cmd.category.git'),
-        action: () => window.dispatchEvent(new CustomEvent('open-git-commit')),
-      },
-      {
-        id: 'git.pull',
-        label: t('cmd.git.pull'),
-        category: t('cmd.category.git'),
-        action: async () => {
-          const root = useWorkspaceStore.getState().root;
-          if (root) {
-            const { pull } = useGitStore.getState();
-            const result = await pull(root);
-            console.log('[git] pull:', result);
-          }
-        },
-      },
-      {
-        id: 'git.push',
-        label: t('cmd.git.push'),
-        category: t('cmd.category.git'),
-        action: async () => {
-          const root = useWorkspaceStore.getState().root;
-          if (root) {
-            const { push } = useGitStore.getState();
-            const result = await push(root);
-            console.log('[git] push:', result);
-          }
-        },
       },
       // 插件命令
       ...registry.getAllCommands(),

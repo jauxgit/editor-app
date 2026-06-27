@@ -9,7 +9,6 @@ import {
   protocol,
   shell,
 } from 'electron';
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
@@ -209,10 +208,6 @@ function createWindow() {
 
   // 窗口关闭时清理所有 git 子进程
   win.on('close', () => {
-    for (const child of gitChildProcesses) {
-      try { child.kill(); } catch {}
-    }
-    gitChildProcesses.clear();
   });
 
   return win;
@@ -448,6 +443,114 @@ ipcMain.handle('app:getPath', () => {
   return app.getPath('documents');
 });
 
+// ===== 全局搜索 =====
+ipcMain.handle('search:files', async (_e, root, query) => {
+  if (!root || !query || query.trim().length === 0) return [];
+  const results = [];
+  const maxResults = 200;
+  const lowerQuery = query.toLowerCase();
+
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    const files = entries.filter((e) => !e.isDirectory() && !e.name.startsWith('.'));
+    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules');
+
+    // 先搜索当前目录的文件
+    for (const file of files) {
+      if (results.length >= maxResults) break;
+      const filePath = join(root, file.name);
+      try {
+        const stat = statSync(filePath);
+        // 跳过二进制文件（只搜索文本文件 < 1MB）
+        if (!isTextExtension(file.name) || stat.size > 1048576) continue;
+        const content = readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (results.length >= maxResults) break;
+          if (lines[i].toLowerCase().includes(lowerQuery)) {
+            results.push({
+              path: filePath,
+              line: i + 1,
+              content: lines[i].trim(),
+            });
+          }
+        }
+      } catch {
+        // 跳过不可读文件
+      }
+    }
+
+    // 递归搜索子目录
+    for (const dir of dirs) {
+      if (results.length >= maxResults) break;
+      const subResults = await searchDir(join(root, dir.name), query, maxResults - results.length);
+      results.push(...subResults);
+    }
+  } catch {
+    // 根目录不可读时返回空
+  }
+
+  return results;
+});
+
+/** 判断文件扩展名是否可文本搜索 */
+function isTextExtension(name) {
+  const textExts = new Set([
+    '.md', '.markdown', '.txt', '.text',
+    '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.less',
+    '.xml', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
+    '.sh', '.bash', '.ps1', '.bat', '.cmd',
+    '.py', '.rb', '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.go', '.rs',
+    '.vue', '.svelte', '.astro', '.php', '.sql',
+    '.env', '.gitignore', '.editorconfig',
+  ]);
+  const ext = name.substring(name.lastIndexOf('.')).toLowerCase();
+  return textExts.has(ext);
+}
+
+/** 递归搜索目录 */
+async function searchDir(dirPath, query, max) {
+  const results = [];
+  const lowerQuery = query.toLowerCase();
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+    const files = entries.filter((e) => !e.isDirectory() && !e.name.startsWith('.'));
+    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules');
+
+    for (const file of files) {
+      if (results.length >= max) break;
+      const filePath = join(dirPath, file.name);
+      try {
+        const stat = statSync(filePath);
+        if (!isTextExtension(file.name) || stat.size > 1048576) continue;
+        const content = readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (results.length >= max) break;
+          if (lines[i].toLowerCase().includes(lowerQuery)) {
+            results.push({
+              path: filePath,
+              line: i + 1,
+              content: lines[i].trim(),
+            });
+          }
+        }
+      } catch {
+        // 跳过不可读文件
+      }
+    }
+
+    for (const dir of dirs) {
+      if (results.length >= max) break;
+      const subResults = await searchDir(join(dirPath, dir.name), query, max - results.length);
+      results.push(...subResults);
+    }
+  } catch {
+    // 权限错误等静默跳过
+  }
+  return results;
+}
+
 // 语言切换 → 重建菜单
 ipcMain.on('language:changed', (_e, lang) => {
   // 可在后续需要时重建 Electron 菜单
@@ -507,40 +610,6 @@ ipcMain.handle('plugins:scan', async () => {
   }
 });
 
-// ===== Git 操作 =====
-/** 正在运行的 git 子进程集合（用于窗口关闭时清理） */
-const gitChildProcesses = new Set();
-
-ipcMain.handle('git:exec', async (_e, cwd, args) => {
-  if (!cwd || !args || !Array.isArray(args)) {
-    return { stdout: '', stderr: 'Invalid arguments', code: 1 };
-  }
-  // 安全检查：cwd 必须存在
-  if (!existsSync(cwd)) {
-    return { stdout: '', stderr: 'Directory not found: ' + cwd, code: 1 };
-  }
-  try {
-    const child = execFile('git', args, { cwd, timeout: 15000 });
-    gitChildProcesses.add(child);
-    return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
-      child.stdout?.on('data', (chunk) => { stdout += chunk; });
-      child.stderr?.on('data', (chunk) => { stderr += chunk; });
-      child.on('close', (code) => {
-        gitChildProcesses.delete(child);
-        resolve({ stdout, stderr, code });
-      });
-      child.on('error', (err) => {
-        gitChildProcesses.delete(child);
-        resolve({ stdout: '', stderr: err.message, code: -1 });
-      });
-    });
-  } catch (err) {
-    return { stdout: '', stderr: err.message, code: -1 };
-  }
-});
-
 // ===== Title Bar 覆盖色更新 =====
 // ===== 窗口控制（Windows frameless 使用） =====
 ipcMain.handle('window:minimize', () => {
@@ -557,11 +626,6 @@ ipcMain.handle('window:maximize', () => {
 });
 
 ipcMain.handle('window:close', () => {
-  // 清理正在运行的 git 子进程，防止渲染进程等待 IPC 响应而卡死
-  for (const child of gitChildProcesses) {
-    try { child.kill(); } catch {}
-  }
-  gitChildProcesses.clear();
   const win = BrowserWindow.getFocusedWindow();
   if (win) win.close();
 });

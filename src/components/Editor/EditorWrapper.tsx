@@ -22,6 +22,7 @@ import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu';
+import { FormatToolbar } from './FormatToolbar';
 import { useImageHandler } from './ImageDropHandler';
 
 /** 构建编辑区右键菜单（全部由外置插件注册） */
@@ -45,6 +46,7 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
   const setFontSize = useEditorStore((s) => s.setFontSize);
   const registry = usePlugins();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; view: EditorView } | null>(null);
+  const [formatBar, setFormatBar] = useState<{ top: number; left: number; view: EditorView } | null>(null);
 
   // 在光标位置插入文本
   const onInsertAtCursor = useCallback((text: string) => {
@@ -97,6 +99,33 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
         { key: 'Mod-h', run: openSearchPanel },
         ...closeBracketsKeymap,
         indentWithTab,
+        // Markdown 格式化快捷键
+        {
+          key: 'Mod-b',
+          run: (view) => {
+            const { from, to } = view.state.selection.main;
+            if (from === to) return false;
+            const text = view.state.sliceDoc(from, to);
+            view.dispatch({
+              changes: { from, to, insert: `**${text}**` },
+              selection: { anchor: from + 2, head: from + 2 + text.length },
+            });
+            return true;
+          },
+        },
+        {
+          key: 'Mod-i',
+          run: (view) => {
+            const { from, to } = view.state.selection.main;
+            if (from === to) return false;
+            const text = view.state.sliceDoc(from, to);
+            view.dispatch({
+              changes: { from, to, insert: `*${text}*` },
+              selection: { anchor: from + 1, head: from + 1 + text.length },
+            });
+            return true;
+          },
+        },
       ]),
       // 代码文件 → 使用对应语言的全文高亮；Markdown/其他 → 使用 Markdown + 代码块高亮
       fileLang ??
@@ -111,6 +140,30 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
         if (update.docChanged) {
           const content = update.state.doc.toString();
           updateContent(docPath, content);
+        }
+        // 检测选区变化 → 显示/隐藏格式化工具栏
+        if (update.selectionSet) {
+          const sel = update.state.selection.main;
+          // 仅在编辑器有焦点且选区非空时显示工具栏
+          if (!sel.empty && sel.from !== sel.to && update.view.hasFocus) {
+            // 计算选区位置（取选区起始处）
+            try {
+              const view = update.view;
+              const coords = view.coordsAtPos(sel.from);
+              if (coords) {
+                const domRect = view.dom.getBoundingClientRect();
+                setFormatBar({
+                  top: domRect.top + coords.top,
+                  left: domRect.left + coords.left,
+                  view,
+                });
+              }
+            } catch {
+              // 坐标计算可能失败，忽略
+            }
+          } else {
+            setFormatBar(null);
+          }
         }
       }),
     ];
@@ -259,6 +312,23 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     return () => window.removeEventListener('image:dblclick', handler);
   }, []);
 
+  // 跳转到指定行（由全局搜索等功能触发）
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { line } = (e as CustomEvent).detail;
+      const view = viewRef.current;
+      if (!view || !line) return;
+      const pos = view.state.doc.line(line);
+      view.dispatch({
+        selection: { anchor: pos.from },
+        scrollIntoView: true,
+      });
+      view.focus();
+    };
+    window.addEventListener('editor:goto-line', handler);
+    return () => window.removeEventListener('editor:goto-line', handler);
+  }, []);
+
   // 编辑区右键菜单
   useEffect(() => {
     const el = editorRef.current;
@@ -303,6 +373,14 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
           y={ctxMenu.y}
           items={editorCtxItems}
           onClose={() => setCtxMenu(null)}
+        />
+      )}
+      {formatBar && (
+        <FormatToolbar
+          view={formatBar.view}
+          top={formatBar.top}
+          left={formatBar.left}
+          onClose={() => setFormatBar(null)}
         />
       )}
     </>

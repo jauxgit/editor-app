@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createNewFile } from '../../lib/commands';
 import { editorThemes, getTheme } from '../../lib/editorThemes';
 import { useT } from '../../lib/i18n';
@@ -15,19 +15,14 @@ import { PluginManager } from '../Settings/PluginManager';
 import { SettingsDialog } from '../Settings/SettingsDialog';
 import { CommandPalette, useRegisterCommands } from './CommandPalette';
 import { TitleBar } from './TitleBar';
-import { CommitDialog } from '../Git/CommitDialog';
-import { ChangesPanel } from '../Git/ChangesPanel';
-import { DiffView } from '../Git/DiffView';
-import { GitStatusBadge } from '../Git/GitStatusBadge';
-import { useGitStore } from '../../stores/gitStore';
+import { SearchPanel } from '../Search/SearchPanel';
 
 export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [gitCommitOpen, setGitCommitOpen] = useState(false);
-  const [diffFile, setDiffFile] = useState<{ filePath: string; changeStatus: string } | null>(null);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [scrollRatio, setScrollRatio] = useState<number | undefined>(undefined);
   const [sidebarTab, setSidebarTab] = useState<'files' | 'outline'>('files');
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
@@ -98,10 +93,6 @@ export function AppLayout() {
   const theme = useEditorStore((s) => s.theme);
   const cycleTheme = useEditorStore((s) => s.cycleTheme);
   const themeDef = getTheme(theme) || editorThemes[0];
-  const toggleChangesPanel = useEditorStore((s) => s.toggleChangesPanel);
-  const showChangesPanel = useEditorStore((s) => s.showChangesPanel);
-  const isGitRepo = useGitStore((s) => s.isGitRepo);
-  const changes = useGitStore((s) => s.changes);
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
@@ -161,17 +152,6 @@ export function AppLayout() {
     })();
   }, []);
 
-  // Git 状态自动刷新 — root 变化时检查是否为 git 仓库并拉取状态
-  const refreshGitStatus = useGitStore((s) => s.refreshStatus);
-  const resetGit = useGitStore((s) => s.reset);
-  useEffect(() => {
-    if (root) {
-      refreshGitStatus(root);
-    } else {
-      resetGit();
-    }
-  }, [root, refreshGitStatus, resetGit]);
-
   // 全局快捷键（绕过 CodeMirror 的按键拦截）
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -217,6 +197,12 @@ export function AppLayout() {
           const id = nextUntitledId();
           store.openUntitled(id);
         }
+        return;
+      }
+      // Cmd+Shift+F → 全局搜索
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowSearchPanel((v) => !v);
         return;
       }
     },
@@ -294,53 +280,18 @@ export function AppLayout() {
     return () => window.removeEventListener('open-about', handler);
   }, []);
 
-  // Git Commit 对话框事件
-  useEffect(() => {
-    const handler = () => setGitCommitOpen(true);
-    window.addEventListener('open-git-commit', handler);
-    return () => window.removeEventListener('open-git-commit', handler);
-  }, []);
-
-  // Git Diff 对话框事件
-  useEffect(() => {
-    const handler = (e: CustomEvent<{ filePath: string; changeStatus: string }>) => {
-      setDiffFile(e.detail);
-    };
-    window.addEventListener('open-git-diff', handler as EventListener);
-    return () => window.removeEventListener('open-git-diff', handler as EventListener);
-  }, []);
-
-  // Git Pull / Push 事件（从菜单触发）
-  useEffect(() => {
-    const handlePull = async () => {
-      const ws = useWorkspaceStore.getState();
-      const gs = useGitStore.getState();
-      if (ws.root) {
-        const result = await gs.pull(ws.root);
-        console.log('[git] pull:', result);
-      }
-    };
-    const handlePush = async () => {
-      const ws = useWorkspaceStore.getState();
-      const gs = useGitStore.getState();
-      if (ws.root) {
-        const result = await gs.push(ws.root);
-        console.log('[git] push:', result);
-      }
-    };
-    window.addEventListener('git-pull', handlePull);
-    window.addEventListener('git-push', handlePush);
-    return () => {
-      window.removeEventListener('git-pull', handlePull);
-      window.removeEventListener('git-push', handlePush);
-    };
-  }, []);
-
   // Settings 对话框事件
   useEffect(() => {
     const handler = () => setSettingsOpen(true);
     window.addEventListener('open-settings', handler);
     return () => window.removeEventListener('open-settings', handler);
+  }, []);
+
+  // 全局搜索面板事件
+  useEffect(() => {
+    const handler = () => setShowSearchPanel((v) => !v);
+    window.addEventListener('toggle-search-panel', handler);
+    return () => window.removeEventListener('toggle-search-panel', handler);
   }, []);
 
   // 拖拽文件/文件夹到窗口
@@ -474,6 +425,47 @@ export function AppLayout() {
 
   const lineCount = activeTab?.content?.split('\n').length || 0;
 
+// 字数统计：统计中文字符 + 英文单词
+const wordCount = useMemo(() => {
+  if (!activeTab?.content) return { words: 0, chars: 0 };
+  const text = activeTab.content;
+  // 统计中文字符（CJK 统一表意文字 + 扩展区）
+  const cjkChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g) || []).length;
+  // 统计非 CJK 的"单词"（按空白分割的连续非空白字符）
+  const nonCjkWords = text
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const words = cjkChars + nonCjkWords;
+  return { words, chars: text.replace(/\s/g, '').length };
+}, [activeTab?.content]);
+
+// ===== 自动保存：监听所有标签页的脏状态，debounce 后写入磁盘 =====
+const autoSave = useEditorStore((s) => s.autoSave);
+const autoSaveDelay = useEditorStore((s) => s.autoSaveDelay);
+useEffect(() => {
+  if (!autoSave || !window.electronAPI) return;
+
+  // 找出所有有真实路径且脏了的标签
+  const dirtyTabs = tabs.filter(
+    (t) => t.isDirty && !t.isUntitled && t.path && t.content !== undefined,
+  );
+  if (dirtyTabs.length === 0) return;
+
+  const timers = dirtyTabs.map((tab) =>
+    setTimeout(async () => {
+      try {
+        await window.electronAPI!.writeFile(tab.path, tab.content);
+        useWorkspaceStore.getState().markClean(tab.path);
+      } catch {
+        // 静默失败 —— 下次脏状态变化时会重试
+      }
+    }, autoSaveDelay),
+  );
+
+  return () => timers.forEach(clearTimeout);
+}, [tabs, autoSave, autoSaveDelay, t]);
+
   const viewModeLabels: Record<string, string> = {
     source: t('toolbar.source'),
     preview: t('toolbar.preview'),
@@ -486,13 +478,6 @@ export function AppLayout() {
       <PluginManager isOpen={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
       <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
-      <CommitDialog isOpen={gitCommitOpen} onClose={() => setGitCommitOpen(false)} />
-      <DiffView
-        isOpen={!!diffFile}
-        filePath={diffFile?.filePath || ''}
-        changeStatus={diffFile?.changeStatus || ''}
-        onClose={() => setDiffFile(null)}
-      />
       {isDragOver && (
         <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
       )}
@@ -622,55 +607,37 @@ export function AppLayout() {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Git Changes toggle */}
-            {isGitRepo && (
-              <button
-                onClick={toggleChangesPanel}
-                className="relative flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
-                style={{
-                  color: showChangesPanel ? 'var(--accent)' : 'var(--text-secondary)',
-                  background: showChangesPanel ? 'var(--accent-muted)' : 'transparent',
-                }}
-                onMouseEnter={(e) => {
-                  if (!showChangesPanel) e.currentTarget.style.background = 'var(--bg-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!showChangesPanel) e.currentTarget.style.background = 'transparent';
-                }}
-                title={t('toolbar.changes')}
+            {/* Global Search toggle */}
+            <button
+              onClick={() => setShowSearchPanel((v) => !v)}
+              className="relative flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+              style={{
+                color: showSearchPanel ? 'var(--accent)' : 'var(--text-secondary)',
+                background: showSearchPanel ? 'var(--accent-muted)' : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!showSearchPanel) e.currentTarget.style.background = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (!showSearchPanel) e.currentTarget.style.background = 'transparent';
+              }}
+              title={t('search.title')}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
               >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="5" cy="5" r="2" />
-                  <circle cx="11" cy="13" r="2" />
-                  <line x1="7" y1="6" x2="10" y2="12" />
-                  <polyline points="11,5 14,5 14,8" />
-                  <line x1="14" y1="5" x2="9" y2="10" />
-                </svg>
-                {/* Change count badge */}
-                {changes.length > 0 && (
-                  <span
-                    className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[14px] h-[14px] rounded-full text-[9px] font-bold leading-none"
-                    style={{
-                      background: 'var(--accent)',
-                      color: '#fff',
-                      padding: '0 3px',
-                    }}
-                  >
-                    {changes.length > 99 ? '99+' : changes.length}
-                  </span>
-                )}
-              </button>
-            )}
+                <circle cx="7" cy="7" r="4" />
+                <line x1="10" y1="10" x2="14" y2="14" />
+              </svg>
+            </button>
 
+            {/* Git Changes toggle */}
             {/* Theme toggle — cycles through available themes */}
             <button
               onClick={cycleTheme}
@@ -901,17 +868,17 @@ export function AppLayout() {
             </div>
           </div>
 
-          {/* Git Changes Panel (right side) */}
+          {/* Search Panel (right side) */}
           <div
             className="shrink-0 border-l overflow-hidden"
             style={{
-              width: showChangesPanel ? '260px' : '0px',
+              width: showSearchPanel ? '280px' : '0px',
               borderColor: 'var(--border)',
               transition: 'width 0.2s ease',
             }}
           >
-            <div className="w-[260px] h-full">
-              <ChangesPanel />
+            <div className="w-[280px] h-full">
+              <SearchPanel onClose={() => setShowSearchPanel(false)} />
             </div>
           </div>
 
@@ -942,11 +909,16 @@ export function AppLayout() {
               <line x1="8" y1="3" x2="8" y2="13" />
             </svg>
             {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
+            {activeTab && (
+              <>
+                <span className="mx-1.5 opacity-40">·</span>
+                <span>{t('status.words', { n: wordCount.words })}</span>
+                <span className="mx-1.5 opacity-40">·</span>
+                <span>{t('status.chars', { n: wordCount.chars })}</span>
+              </>
+            )}
           </span>
           <span>{viewModeLabels[viewMode]}</span>
-
-          {/* Git 分支 + 变更数 */}
-          <GitStatusBadge />
 
           <span className="ml-auto">{t('status.utf8')}</span>
           <span>{t('status.markdown')}</span>

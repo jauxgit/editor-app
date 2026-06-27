@@ -27,6 +27,7 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
   const setFont = useEditorStore((s) => s.setFont);
   const fontSize = useEditorStore((s) => s.fontSize);
   const setFontSize = useEditorStore((s) => s.setFontSize);
+  const autoSave = useEditorStore((s) => s.autoSave);
 
   // 开启动画
   // ESC 关闭
@@ -186,6 +187,29 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Auto save */}
+              <div>
+                <label
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => useEditorStore.getState().setAutoSave(!autoSave)}
+                >
+                  <div
+                    className="w-8 h-4 rounded-full transition-colors relative"
+                    style={{
+                      background: autoSave ? 'var(--accent)' : 'var(--border)',
+                    }}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full bg-white absolute top-0.5 transition-all"
+                      style={{ left: autoSave ? '18px' : '2px' }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    {t('settings.autoSave')}
+                  </span>
+                </label>
               </div>
             </>
           )}
