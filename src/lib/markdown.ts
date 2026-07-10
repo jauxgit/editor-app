@@ -7,7 +7,7 @@ import rehypeHighlight from 'rehype-highlight'
 import rehypeStringify from 'rehype-stringify'
 import { rehypeMarkExplicitLanguage, rehypeCodeLabels } from './rehype-code-labels'
 
-const defaultProcessor = unified()
+const defaultProcessor = (unified() as any)
   .use(remarkParse)
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: false })
@@ -37,19 +37,19 @@ export function renderMarkdownWithPlugins(
     rehypePlugins?: [Plugin, unknown?][]
   }
 ): string {
-  let processor = unified().use(remarkParse)
+  let processor: any = (unified() as any).use(remarkParse as any)
 
   for (const [plugin, opts] of options.remarkPlugins ?? []) {
-    processor = processor.use(plugin, opts)
+    processor = processor.use(plugin as any, opts as any)
   }
 
-  processor = processor.use(remarkRehype, { allowDangerousHtml: false })
+  processor = processor.use(remarkRehype as any, { allowDangerousHtml: false })
 
   for (const [plugin, opts] of options.rehypePlugins ?? []) {
-    processor = processor.use(plugin, opts)
+    processor = processor.use(plugin as any, opts as any)
   }
 
-  processor = processor.use(rehypeStringify, { allowDangerousHtml: false })
+  processor = processor.use(rehypeStringify as any, { allowDangerousHtml: false })
   const result = processor.processSync(preprocessSoftBreaks(md))
   return String(result)
 }

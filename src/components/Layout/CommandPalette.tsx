@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { commands, createNewFile, type Command } from '../../lib/commands';
+import { commands, type Command } from '../../lib/commands';
 import { editorFonts } from '../../lib/editorFonts';
 import { editorThemes } from '../../lib/editorThemes';
 import { highlightThemes } from '../../lib/highlightThemes';
 import { useT } from '../../lib/i18n';
 import { usePlugins } from '../../lib/pluginRegistry';
+import { activateNextTab, closeActiveTab, createNewDocument, openFileFromDialog, openFolderFromDialog, saveActiveTab } from '../../lib/workspaceActions';
 import { useEditorStore } from '../../stores/editorStore';
-import { nextUntitledId, useWorkspaceStore } from '../../stores/workspaceStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface Props {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 
   const results: Command[] = commands.search(query);
 
-  // 开启动画
+  // 寮€鍚姩鐢?
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => setVisible(true));
@@ -31,7 +32,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
     }
   }, [isOpen]);
 
-  // 打开时聚焦输入框并重置
+  // 鎵撳紑鏃惰仛鐒﹁緭鍏ユ骞堕噸缃?
   useEffect(() => {
     if (isOpen) {
       setQuery('');
@@ -40,7 +41,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
     }
   }, [isOpen]);
 
-  // 键盘导航
+  // 閿洏瀵艰埅
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -201,7 +202,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
               className="px-1 py-0.5 rounded text-[10px]"
               style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
             >
-              ↑↓
+              鈫戔啌
             </kbd>
             {t('cmdPalette.navigate')}
           </span>
@@ -210,7 +211,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
               className="px-1 py-0.5 rounded text-[10px]"
               style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
             >
-              ↵
+              鈫?
             </kbd>
             {t('cmdPalette.execute')}
           </span>
@@ -230,7 +231,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 }
 
 /**
- * 注册所有可用命令
+ * 娉ㄥ唽鎵€鏈夊彲鐢ㄥ懡浠?
  */
 export function useRegisterCommands() {
   const setViewMode = useEditorStore((s) => s.setViewMode);
@@ -238,148 +239,139 @@ export function useRegisterCommands() {
   const setTheme = useEditorStore((s) => s.setTheme);
   const setHighlightTheme = useEditorStore((s) => s.setHighlightTheme);
   const setFont = useEditorStore((s) => s.setFont);
+  const fontSize = useEditorStore((s) => s.fontSize);
+  const setFontSize = useEditorStore((s) => s.setFontSize);
+  const autoSave = useEditorStore((s) => s.autoSave);
+  const setAutoSave = useEditorStore((s) => s.setAutoSave);
   const setLanguage = useEditorStore((s) => s.setLanguage);
   const language = useEditorStore((s) => s.language);
+  const tabs = useWorkspaceStore((s) => s.openTabs);
+  const activeTabPath = useWorkspaceStore((s) => s.activeTabPath);
   const t = useT();
   const registry = usePlugins();
 
   useEffect(() => {
+    const hasActiveTab = Boolean(activeTabPath);
+    const multipleTabs = tabs.length > 1;
+
     commands.clear();
     commands.registerAll([
       {
         id: 'plugins.manager',
         label: t('cmd.plugins.manager'),
-        category: 'Plugins',
-        action: () => {
-          window.dispatchEvent(new CustomEvent('open-plugin-manager'));
-        },
+        category: t('cmd.category.plugins'),
+        keywords: ['extension', 'addon'],
+        action: () => window.dispatchEvent(new CustomEvent('open-plugin-manager')),
+      },
+      {
+        id: 'settings.open',
+        label: t('cmd.settings.open'),
+        category: t('cmd.category.settings'),
+        keywords: ['preferences', 'options'],
+        shortcut: 'Ctrl+,',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings')),
       },
       {
         id: 'file.new',
         label: t('cmd.file.new'),
         category: t('cmd.category.file'),
-        action: async () => {
-          const store = useWorkspaceStore.getState();
-          if (store.root) {
-            const path = await createNewFile(store.root);
-            if (path) {
-              store.openFile(path, '');
-              store.triggerRefresh();
-            }
-          } else {
-            store.openUntitled(nextUntitledId());
-          }
-        },
+        keywords: ['create', 'document', 'untitled'],
+        shortcut: 'Ctrl+N',
+        action: () => createNewDocument(),
       },
-      {
-        id: 'view.source',
-        label: t('cmd.view.source'),
-        category: t('cmd.category.view'),
-        action: () => setViewMode('source'),
-      },
-      {
-        id: 'view.preview',
-        label: t('cmd.view.preview'),
-        category: t('cmd.category.view'),
-        action: () => setViewMode('preview'),
-      },
-      {
-        id: 'view.split',
-        label: t('cmd.view.split'),
-        category: t('cmd.category.view'),
-        action: () => setViewMode('split'),
-      },
-      {
-        id: 'view.toggle-file-tree',
-        label: t('cmd.view.toggleFileTree'),
-        category: t('cmd.category.view'),
-        action: toggleFileTree,
-      },
-      {
-        id: 'view.search',
-        label: t('cmd.view.search'),
-        category: t('cmd.category.view'),
-        action: () => window.dispatchEvent(new CustomEvent('toggle-search-panel')),
-      },
-      // 编辑器主题：每个主题一条命令
-      ...editorThemes.map((et) => ({
-        id: `theme.editor.${et.id}`,
-        label: t(`editorTheme.${et.id}`),
-        category: t('cmd.category.editorTheme'),
-        action: () => setTheme(et.id),
-      })),
-      // 编辑器字体：每个预设一条命令
-      ...editorFonts.map((f) => ({
-        id: `font.${f.id}`,
-        label: t(`editorFont.${f.id}`),
-        category: t('cmd.category.font'),
-        action: () => setFont(f.id),
-      })),
       {
         id: 'file.open',
         label: t('cmd.file.open'),
         category: t('cmd.category.file'),
-        action: () => {
-          window.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, metaKey: true }),
-          );
-        },
+        keywords: ['load', 'recent'],
+        shortcut: 'Ctrl+O',
+        action: () => openFileFromDialog(),
       },
       {
         id: 'file.open-folder',
         label: t('cmd.file.openFolder'),
         category: t('cmd.category.file'),
-        action: () => {
-          window.dispatchEvent(
-            new KeyboardEvent('keydown', {
-              key: 'o',
-              shiftKey: true,
-              ctrlKey: true,
-              metaKey: true,
-            }),
-          );
-        },
+        keywords: ['workspace', 'directory'],
+        shortcut: 'Ctrl+Shift+O',
+        action: () => openFolderFromDialog(),
       },
       {
         id: 'file.save',
         label: t('cmd.file.save'),
         category: t('cmd.category.file'),
-        action: () => {
-          window.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 's', ctrlKey: true, metaKey: true }),
-          );
-        },
-      },
-      ...highlightThemes.map((theme) => ({
-        id: `theme.highlight.${theme.id}`,
-        label: `${t('cmd.category.highlight')}: ${t(`theme.${theme.id}`)}`,
-        category: t('cmd.category.highlight'),
-        action: () => setHighlightTheme(theme.id),
-      })),
-      {
-        id: 'language.en',
-        label: `${t('cmd.category.language')}: ${t('language.en')}`,
-        category: t('cmd.category.language'),
-        action: () => setLanguage('en'),
+        keywords: ['write'],
+        shortcut: 'Ctrl+S',
+        disabledReason: hasActiveTab ? null : t('cmd.disabled.noActiveFile'),
+        action: () => saveActiveTab(),
       },
       {
-        id: 'language.zh',
-        label: `${t('cmd.category.language')}: ${t('language.zh')}`,
-        category: t('cmd.category.language'),
-        action: () => setLanguage('zh'),
+        id: 'file.close-tab',
+        label: t('cmd.file.closeTab'),
+        category: t('cmd.category.file'),
+        keywords: ['tab'],
+        shortcut: 'Ctrl+W',
+        disabledReason: hasActiveTab ? null : t('cmd.disabled.noActiveFile'),
+        action: () => closeActiveTab(),
       },
-      // 插件命令
+      {
+        id: 'tabs.next',
+        label: t('cmd.tabs.next'),
+        category: t('cmd.category.tabs'),
+        keywords: ['switch'],
+        shortcut: 'Ctrl+Tab',
+        disabledReason: multipleTabs ? null : t('cmd.disabled.needMultipleTabs'),
+        action: () => { activateNextTab(1); },
+      },
+      {
+        id: 'tabs.previous',
+        label: t('cmd.tabs.previous'),
+        category: t('cmd.category.tabs'),
+        keywords: ['switch'],
+        shortcut: 'Ctrl+Shift+Tab',
+        disabledReason: multipleTabs ? null : t('cmd.disabled.needMultipleTabs'),
+        action: () => { activateNextTab(-1); },
+      },
+      {
+        id: 'settings.toggle-auto-save',
+        label: autoSave ? t('cmd.settings.autoSaveOff') : t('cmd.settings.autoSaveOn'),
+        category: t('cmd.category.settings'),
+        keywords: ['autosave', 'save'],
+        action: () => setAutoSave(!autoSave),
+      },
+      {
+        id: 'editor.font-size.increase',
+        label: t('cmd.editor.increaseFontSize'),
+        category: t('cmd.category.editor'),
+        keywords: ['zoom', 'bigger'],
+        shortcut: 'Ctrl++',
+        action: () => setFontSize(Math.min(24, fontSize + 1)),
+      },
+      {
+        id: 'editor.font-size.decrease',
+        label: t('cmd.editor.decreaseFontSize'),
+        category: t('cmd.category.editor'),
+        keywords: ['zoom', 'smaller'],
+        shortcut: 'Ctrl+-',
+        action: () => setFontSize(Math.max(10, fontSize - 1)),
+      },
+      {
+        id: 'editor.font-size.reset',
+        label: t('cmd.editor.resetFontSize'),
+        category: t('cmd.category.editor'),
+        keywords: ['zoom', 'default'],
+        action: () => setFontSize(14),
+      },
+      { id: 'view.source', label: t('cmd.view.source'), category: t('cmd.category.view'), keywords: ['edit', 'markdown'], action: () => setViewMode('source') },
+      { id: 'view.preview', label: t('cmd.view.preview'), category: t('cmd.category.view'), keywords: ['render'], action: () => setViewMode('preview') },
+      { id: 'view.split', label: t('cmd.view.split'), category: t('cmd.category.view'), keywords: ['side by side'], action: () => setViewMode('split') },
+      { id: 'view.toggle-file-tree', label: t('cmd.view.toggleFileTree'), category: t('cmd.category.view'), keywords: ['sidebar', 'explorer'], action: toggleFileTree },
+      { id: 'view.search', label: t('cmd.view.search'), category: t('cmd.category.view'), keywords: ['find', 'grep'], shortcut: 'Ctrl+Shift+F', action: () => window.dispatchEvent(new CustomEvent('toggle-search-panel')) },
+      ...editorThemes.map((et) => ({ id: `theme.editor.${et.id}`, label: t(`editorTheme.${et.id}`), category: t('cmd.category.editorTheme'), keywords: ['theme', et.id], action: () => setTheme(et.id) })),
+      ...editorFonts.map((f) => ({ id: `font.${f.id}`, label: t(`editorFont.${f.id}`), category: t('cmd.category.font'), keywords: ['font', f.id], action: () => setFont(f.id) })),
+      ...highlightThemes.map((theme) => ({ id: `theme.highlight.${theme.id}`, label: `${t('cmd.category.highlight')}: ${t(`theme.${theme.id}`)}`, category: t('cmd.category.highlight'), keywords: ['syntax', 'highlight', theme.id], action: () => setHighlightTheme(theme.id) })),
+      { id: 'language.en', label: `${t('cmd.category.language')}: ${t('language.en')}`, category: t('cmd.category.language'), keywords: ['english', 'locale'], action: () => setLanguage('en') },
+      { id: 'language.zh', label: `${t('cmd.category.language')}: ${t('language.zh')}`, category: t('cmd.category.language'), keywords: ['chinese', 'locale'], action: () => setLanguage('zh') },
       ...registry.getAllCommands(),
     ]);
-  }, [
-    setViewMode,
-    toggleFileTree,
-    setTheme,
-    setHighlightTheme,
-    setFont,
-    setLanguage,
-    language,
-    t,
-    registry.version,
-  ]);
+  }, [activeTabPath, autoSave, fontSize, language, registry.version, setAutoSave, setFont, setFontSize, setHighlightTheme, setLanguage, setTheme, setViewMode, t, tabs.length, toggleFileTree]);
 }

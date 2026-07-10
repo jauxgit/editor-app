@@ -16,14 +16,14 @@ export function TocView({ items, activeId, onItemClick }: Props) {
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-dim)' }}>
+      <div className="h-full min-h-0 flex items-center justify-center" style={{ color: 'var(--text-dim)' }}>
         <span className="text-xs">{t('toc.empty')}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto py-1">
+    <div className="h-full min-h-0 overflow-y-auto overscroll-contain py-1">
       {items.map((item) => (
         <a
           key={item.id}

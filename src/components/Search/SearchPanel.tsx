@@ -17,7 +17,7 @@ export function SearchPanel({ onClose }: Props) {
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 自动聚焦输入框
   useEffect(() => {

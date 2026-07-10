@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { editorFonts } from '../../lib/editorFonts';
 import { editorThemes } from '../../lib/editorThemes';
-import type { HighlightThemeId } from '../../lib/highlightThemes';
+import { highlightThemes } from '../../lib/highlightThemes';
 import { useT } from '../../lib/i18n';
 import { useEditorStore } from '../../stores/editorStore';
 
@@ -28,6 +28,8 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
   const fontSize = useEditorStore((s) => s.fontSize);
   const setFontSize = useEditorStore((s) => s.setFontSize);
   const autoSave = useEditorStore((s) => s.autoSave);
+  const autoSaveDelay = useEditorStore((s) => s.autoSaveDelay);
+  const setAutoSaveDelay = useEditorStore((s) => s.setAutoSaveDelay);
 
   // 开启动画
   // ESC 关闭
@@ -46,14 +48,6 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null;
 
-  const highlightThemeIds: HighlightThemeId[] = [
-    'github',
-    'github-dark',
-    'atom-one-light',
-    'night-owl',
-    'a11y-light',
-    'monokai',
-  ];
 
   return (
     <div
@@ -211,6 +205,27 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
                   </span>
                 </label>
               </div>
+
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  {t('settings.autoSaveDelay')}
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="500"
+                    max="10000"
+                    step="500"
+                    value={autoSaveDelay}
+                    onChange={(e) => setAutoSaveDelay(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                    style={{ background: 'var(--border)', accentColor: 'var(--accent)' }}
+                  />
+                  <span className="w-14 text-right text-xs" style={{ color: 'var(--text-dim)' }}>
+                    {(autoSaveDelay / 1000).toFixed(1)}s
+                  </span>
+                </div>
+              </div>
             </>
           )}
 
@@ -262,19 +277,19 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
                   {t('settings.highlightTheme')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {highlightThemeIds.map((id) => (
+                  {highlightThemes.map((theme) => (
                     <button
-                      key={id}
-                      onClick={() => setHighlightTheme(id)}
+                      key={theme.id}
+                      onClick={() => setHighlightTheme(theme.id)}
                       className="px-2.5 py-1.5 text-xs rounded-lg transition-all border"
                       style={{
-                        borderColor: highlightTheme === id ? 'var(--accent)' : 'var(--border)',
+                        borderColor: highlightTheme === theme.id ? 'var(--accent)' : 'var(--border)',
                         background:
-                          highlightTheme === id ? 'var(--accent-muted)' : 'var(--bg-base)',
-                        color: highlightTheme === id ? 'var(--accent)' : 'var(--text-secondary)',
+                          highlightTheme === theme.id ? 'var(--accent-muted)' : 'var(--bg-base)',
+                        color: highlightTheme === theme.id ? 'var(--accent)' : 'var(--text-secondary)',
                       }}
                     >
-                      {id}
+                      {theme.label}
                     </button>
                   ))}
                 </div>

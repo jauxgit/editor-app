@@ -134,7 +134,7 @@ export const warmSyntaxHighlight = syntaxHighlighting(
     { tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName], color: 'var(--syntax-variable)' },
     { tag: [t.function(t.variableName), t.labelName], color: 'var(--syntax-function)' },
     { tag: t.color, color: 'var(--syntax-constant)' },
-    { tag: [t.constant, t.standard(t.name)], color: 'var(--syntax-constant)' },
+    { tag: [t.constant, t.standard(t.name) as any], color: 'var(--syntax-constant)' },
     { tag: [t.definition(t.name), t.separator], color: 'var(--syntax-variable)' },
     { tag: [t.typeName, t.className, t.tagName, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace], color: 'var(--syntax-type)' },
     { tag: [t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace], color: 'var(--syntax-type)' },

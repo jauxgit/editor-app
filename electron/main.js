@@ -24,6 +24,15 @@ import {
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Work around Chromium GPU process crashes on some Windows dev environments.
+// Must be configured before app is ready.
+if (!app.isPackaged) {
+  // Disable Chromium sandbox only in dev to avoid GPU process launch failures on
+  // some Windows environments. `disable-gpu-sandbox` can make the renderer blank
+  // on affected machines, so use the broader dev-only `no-sandbox` fallback.
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'markedit',
@@ -207,8 +216,7 @@ function createWindow() {
   });
 
   // 窗口关闭时清理所有 git 子进程
-  win.on('close', () => {
-  });
+  win.on('close', () => {});
 
   return win;
 }
@@ -453,7 +461,9 @@ ipcMain.handle('search:files', async (_e, root, query) => {
   try {
     const entries = await readdir(root, { withFileTypes: true });
     const files = entries.filter((e) => !e.isDirectory() && !e.name.startsWith('.'));
-    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules');
+    const dirs = entries.filter(
+      (e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules',
+    );
 
     // 先搜索当前目录的文件
     for (const file of files) {
@@ -496,13 +506,49 @@ ipcMain.handle('search:files', async (_e, root, query) => {
 /** 判断文件扩展名是否可文本搜索 */
 function isTextExtension(name) {
   const textExts = new Set([
-    '.md', '.markdown', '.txt', '.text',
-    '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.less',
-    '.xml', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
-    '.sh', '.bash', '.ps1', '.bat', '.cmd',
-    '.py', '.rb', '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.go', '.rs',
-    '.vue', '.svelte', '.astro', '.php', '.sql',
-    '.env', '.gitignore', '.editorconfig',
+    '.md',
+    '.markdown',
+    '.txt',
+    '.text',
+    '.js',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.json',
+    '.html',
+    '.css',
+    '.scss',
+    '.less',
+    '.xml',
+    '.yaml',
+    '.yml',
+    '.toml',
+    '.ini',
+    '.cfg',
+    '.conf',
+    '.sh',
+    '.bash',
+    '.ps1',
+    '.bat',
+    '.cmd',
+    '.py',
+    '.rb',
+    '.java',
+    '.c',
+    '.cpp',
+    '.h',
+    '.hpp',
+    '.cs',
+    '.go',
+    '.rs',
+    '.vue',
+    '.svelte',
+    '.astro',
+    '.php',
+    '.sql',
+    '.env',
+    '.gitignore',
+    '.editorconfig',
   ]);
   const ext = name.substring(name.lastIndexOf('.')).toLowerCase();
   return textExts.has(ext);
@@ -515,7 +561,9 @@ async function searchDir(dirPath, query, max) {
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
     const files = entries.filter((e) => !e.isDirectory() && !e.name.startsWith('.'));
-    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules');
+    const dirs = entries.filter(
+      (e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules',
+    );
 
     for (const file of files) {
       if (results.length >= max) break;
