@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createNewFile } from '../../lib/commands';
 import { editorThemes, getTheme } from '../../lib/editorThemes';
 import { useT } from '../../lib/i18n';
+import { closeTabWithConfirm, createNewDocument, openFileFromDialog, openFolderFromDialog } from '../../lib/workspaceActions';
 import { useEditorStore } from '../../stores/editorStore';
+import { useToastStore } from '../../stores/toastStore';
 import type { TabInfo } from '../../stores/workspaceStore';
-import { nextUntitledId, useWorkspaceStore } from '../../stores/workspaceStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { EditorWrapper } from '../Editor/EditorWrapper';
+import { HomePage } from '../Home/HomePage';
 import { FileTree } from '../FileTree/FileTree';
 import { TocView } from '../FileTree/TocView';
 import type { TocItem } from '../Preview/MarkdownPreview';
@@ -30,55 +32,27 @@ export function AppLayout() {
   const t = useT();
 
   const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dragKind, setDragKind] = useState<'file' | 'folder' | 'mixed'>('file');
   const tabs = useWorkspaceStore((s) => s.openTabs);
   const activeTabPath = useWorkspaceStore((s) => s.activeTabPath);
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
-  const closeTab = useWorkspaceStore((s) => s.closeTab);
   const fontSize = useEditorStore((s) => s.fontSize);
+  const saveStatus = useEditorStore((s) => s.saveStatus);
+  const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
+  const autoSave = useEditorStore((s) => s.autoSave);
+  const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
+  const showToast = useToastStore((s) => s.showToast);
 
   // 关闭标签确认（未保存时提示）
   const handleCloseTab = useCallback(
     async (tab: TabInfo) => {
-      if (!tab.isDirty) {
-        closeTab(tab.path);
-        return;
-      }
-      const api = window.electronAPI;
-      if (api) {
-        const action = await api.confirmUnsaved(
-          t('confirm.unsavedMessage', { name: tab.name }),
-          t('confirm.unsavedTitle'),
-        );
-        if (action === 'save') {
-          // 保存后关闭
-          const ws = useWorkspaceStore.getState();
-          if (tab.isUntitled) {
-            const savePath = await api.saveDialog(tab.name);
-            if (savePath) {
-              await api.writeFile(savePath, tab.content);
-              ws.updateTabPath(tab.path, savePath);
-              ws.markClean(savePath);
-            } else {
-              return; // 取消保存
-            }
-          } else {
-            await api.writeFile(tab.path, tab.content);
-            ws.markClean(tab.path);
-          }
-          closeTab(tab.path);
-        } else if (action === 'discard') {
-          closeTab(tab.path);
-        }
-        // cancel → 不做操作
-      } else {
-        // 非 Electron 环境 fallback
-        if (window.confirm(t('confirm.unsavedMessage', { name: tab.name }))) {
-          closeTab(tab.path);
-        }
-      }
+      await closeTabWithConfirm(tab);
     },
-    [closeTab, t],
+    [],
   );
   const openFile = useWorkspaceStore((s) => s.openFile);
   const setRoot = useWorkspaceStore((s) => s.setRoot);
@@ -96,12 +70,9 @@ export function AppLayout() {
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
-  // 大纲点击 → 在预览区跳转到标题
   const handleTocItemClick = useCallback(
     (id: string) => {
-      // 确保预览模式可见；如果当前是 source 模式则暂时无法滚动
       if (viewMode === 'source') return;
-      // 找到预览区的标题元素并滚动
       const previewEl = document.querySelector('.markdown-preview');
       const heading = previewEl?.querySelector(`#${CSS.escape(id)}`);
       if (heading) {
@@ -110,6 +81,10 @@ export function AppLayout() {
     },
     [viewMode],
   );
+
+  // Register command palette commands
+
+  // 大纲点击 → 在预览区跳转到标题
 
   // 注册命令面板命令
   useRegisterCommands();
@@ -156,57 +131,33 @@ export function AppLayout() {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      // Cmd+Shift+P → 命令面板
       if (mod && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setPaletteOpen((o) => !o);
         return;
       }
-      // Cmd+O → 打开文件（不影响文件树，仅新增标签页）
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
-        if (window.electronAPI) {
-          window.electronAPI.openFileDialog().then((result) => {
-            if (result) openFile(result.path, result.content);
-          });
-        }
+        void openFileFromDialog();
         return;
       }
-      // Cmd+Shift+O → 打开文件夹
       if (mod && e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
-        if (window.electronAPI) {
-          window.electronAPI.openFolderDialog().then((result) => {
-            if (result) setRoot(result.path);
-          });
-        }
+        void openFolderFromDialog();
         return;
       }
-      // Cmd+N → 新建文件
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
         e.preventDefault();
-        const store = useWorkspaceStore.getState();
-        if (store.root) {
-          createNewFile(store.root).then((path) => {
-            if (path) {
-              store.openFile(path, '');
-              store.triggerRefresh();
-            }
-          });
-        } else {
-          const id = nextUntitledId();
-          store.openUntitled(id);
-        }
+        void createNewDocument();
         return;
       }
-      // Cmd+Shift+F → 全局搜索
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setShowSearchPanel((v) => !v);
         return;
       }
     },
-    [setRoot, openFile],
+    [],
   );
 
   useEffect(() => {
@@ -303,7 +254,16 @@ export function AppLayout() {
 
     const onDragOver = (e: DragEvent) => {
       e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+        const entries = Array.from(e.dataTransfer.items || [])
+          .filter((item) => item.kind === 'file')
+          .map((item) => item.webkitGetAsEntry?.())
+          .filter(Boolean);
+        const hasDirectory = entries.some((entry) => entry?.isDirectory);
+        const hasFile = entries.some((entry) => entry?.isFile);
+        setDragKind(hasDirectory && hasFile ? 'mixed' : hasDirectory ? 'folder' : 'file');
+      }
       if (dragLeaveTimer) clearTimeout(dragLeaveTimer);
       setIsDragOver(true);
     };
@@ -429,9 +389,7 @@ export function AppLayout() {
 const wordCount = useMemo(() => {
   if (!activeTab?.content) return { words: 0, chars: 0 };
   const text = activeTab.content;
-  // 统计中文字符（CJK 统一表意文字 + 扩展区）
   const cjkChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g) || []).length;
-  // 统计非 CJK 的"单词"（按空白分割的连续非空白字符）
   const nonCjkWords = text
     .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g, ' ')
     .split(/\s+/)
@@ -441,36 +399,46 @@ const wordCount = useMemo(() => {
 }, [activeTab?.content]);
 
 // ===== 自动保存：监听所有标签页的脏状态，debounce 后写入磁盘 =====
-const autoSave = useEditorStore((s) => s.autoSave);
 const autoSaveDelay = useEditorStore((s) => s.autoSaveDelay);
 useEffect(() => {
   if (!autoSave || !window.electronAPI) return;
 
-  // 找出所有有真实路径且脏了的标签
   const dirtyTabs = tabs.filter(
-    (t) => t.isDirty && !t.isUntitled && t.path && t.content !== undefined,
+    (tab) => tab.isDirty && !tab.isUntitled && tab.path && tab.content !== undefined,
   );
   if (dirtyTabs.length === 0) return;
 
   const timers = dirtyTabs.map((tab) =>
     setTimeout(async () => {
       try {
+        setSaveStatus('saving');
         await window.electronAPI!.writeFile(tab.path, tab.content);
         useWorkspaceStore.getState().markClean(tab.path);
-      } catch {
-        // 静默失败 —— 下次脏状态变化时会重试
+        showToast({ type: 'success', message: t('toast.autoSaveSuccess'), detail: tab.path, duration: 1800 });
+      } catch (error) {
+        setSaveStatus('error');
+        showToast({ type: 'error', message: t('toast.autoSaveFailed'), detail: error instanceof Error ? error.message : String(error) });
       }
     }, autoSaveDelay),
   );
 
   return () => timers.forEach(clearTimeout);
-}, [tabs, autoSave, autoSaveDelay, t]);
+}, [tabs, autoSave, autoSaveDelay, t, setSaveStatus, showToast]);
 
   const viewModeLabels: Record<string, string> = {
     source: t('toolbar.source'),
     preview: t('toolbar.preview'),
     split: t('toolbar.split'),
   };
+
+  const saveStatusLabel = useMemo(() => {
+    if (!autoSave) return t('status.autoSaveOff');
+    if (saveStatus === 'saving') return t('status.saving');
+    if (saveStatus === 'unsaved') return t('status.unsaved');
+    if (saveStatus === 'error') return t('status.saveError');
+    if (lastSavedAt) return t('status.savedJustNow');
+    return t('status.saved');
+  }, [autoSave, saveStatus, lastSavedAt, t]);
 
   return (
     <>
@@ -479,7 +447,12 @@ useEffect(() => {
       <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
       {isDragOver && (
-        <div className="fixed inset-0 z-50 pointer-events-none ring-2 ring-[var(--accent)] ring-inset drag-over-overlay" />
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center ring-2 ring-[var(--accent)] ring-inset drag-over-overlay">
+          <div className="rounded-2xl border px-6 py-5 text-center shadow-2xl" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--accent)', color: 'var(--text-primary)' }}>
+            <div className="text-sm font-medium">{dragKind === 'folder' ? t('drag.dropFolder') : dragKind === 'mixed' ? t('drag.dropMixed') : t('drag.dropFile')}</div>
+            <div className="mt-1 text-xs" style={{ color: 'var(--text-dim)' }}>{t('drag.dropHint')}</div>
+          </div>
+        </div>
       )}
       <div
         className="h-full flex flex-col"
@@ -664,14 +637,14 @@ useEffect(() => {
         </div>
 
         {/* ===== Main content area ===== */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* File Tree */}
           <div
             ref={sidebarRef}
             onMouseDown={handleSidebarMouseDown}
             onMouseMove={handleSidebarMouseMove}
             onMouseLeave={() => setIsBorderHover(false)}
-            className="shrink-0 border-r overflow-hidden sidebar-panel"
+            className="shrink-0 min-h-0 border-r overflow-hidden sidebar-panel"
             style={{
               width: showFileTree ? `${sidebarWidth}px` : '0px',
               borderColor: 'var(--border)',
@@ -679,7 +652,7 @@ useEffect(() => {
             }}
           >
             {showFileTree && (
-              <div className="h-full flex flex-col">
+              <div className="h-full min-h-0 flex flex-col">
                 {/* Sidebar tabs: Files / Outline */}
                 <div
                   className="flex items-stretch border-b shrink-0"
@@ -722,7 +695,7 @@ useEffect(() => {
                 </div>
 
                 {/* Tab content */}
-                <div key={sidebarTab} className="flex-1 overflow-hidden animate-tab-fade-in">
+                <div key={sidebarTab} className="flex-1 min-h-0 overflow-hidden animate-tab-fade-in">
                   {sidebarTab === 'files' ? (
                     <FileTree />
                   ) : (
@@ -838,32 +811,7 @@ useEffect(() => {
                   )}
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center select-none">
-                  <div className="text-center max-w-md">
-                    <div className="mb-4 flex justify-center">
-                      <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 48 48"
-                        fill="none"
-                        stroke="var(--accent)"
-                        strokeWidth="1.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        opacity="0.5"
-                      >
-                        <path d="M14 6H8a2 2 0 0 0-2 2v32a2 2 0 0 0 2 2h32a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-6" />
-                        <polyline points="14,6 14,12 24,12 34,12 34,6" />
-                        <line x1="16" y1="22" x2="32" y2="22" />
-                        <line x1="16" y1="28" x2="28" y2="28" />
-                        <line x1="16" y1="34" x2="24" y2="34" />
-                      </svg>
-                    </div>
-                    <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                      {t('empty.hint')}
-                    </p>
-                  </div>
-                </div>
+                <HomePage onOpenCommandPalette={() => setPaletteOpen(true)} />
               )}
             </div>
           </div>
@@ -919,6 +867,7 @@ useEffect(() => {
             )}
           </span>
           <span>{viewModeLabels[viewMode]}</span>
+          <span>{saveStatusLabel}</span>
 
           <span className="ml-auto">{t('status.utf8')}</span>
           <span>{t('status.markdown')}</span>

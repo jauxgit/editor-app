@@ -11,13 +11,13 @@ export function markdownPipelinePlugin(): MarkEditPlugin {
     name: 'Markdown Pipeline',
     description: 'Provides a default remark/rehype pipeline for Markdown processing',
     version: '1.0.0',
-    remarkPlugins: [[remarkGfm]],
+    remarkPlugins: [[remarkGfm as any]],
     rehypePlugins: [
-      [rehypeSlug],
-      [rehypeToc],
-      [rehypeMarkExplicitLanguage],
-      [rehypeHighlight],
-      [rehypeCodeLabels],
+      [rehypeSlug as any],
+      [rehypeToc as any],
+      [rehypeMarkExplicitLanguage as any],
+      [rehypeHighlight as any],
+      [rehypeCodeLabels as any],
     ],
   };
 }

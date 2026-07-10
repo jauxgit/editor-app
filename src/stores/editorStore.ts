@@ -6,39 +6,41 @@ import { editorThemes, getTheme, DEFAULT_THEME_ID } from '../lib/editorThemes'
 import { DEFAULT_FONT_ID } from '../lib/editorFonts'
 
 export type ViewMode = 'source' | 'preview' | 'split'
+export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 interface EditorState {
   viewMode: ViewMode
-  /** Theme ID — see lib/editorThemes.ts for available themes */
   theme: string
   showFileTree: boolean
-  /** Sidebar width in pixels — persisted for drag-to-resize */
   sidebarWidth: number
   highlightTheme: HighlightThemeId
   language: Lang
   lastFilePath: string | null
   lastRootPath: string | null
+  recentFiles: string[]
+  recentFolders: string[]
+  saveStatus: SaveStatus
+  lastSavedAt: number | null
   disabledPlugins: string[]
-  /** Font preset ID — see lib/editorFonts.ts for available fonts */
   font: string
-  /** 编辑器字号（px） */
   fontSize: number
-  /** 自动保存开关 */
   autoSave: boolean
-  /** 自动保存延迟（毫秒） */
   autoSaveDelay: number
 
   setViewMode: (mode: ViewMode) => void
   toggleFileTree: () => void
   toggleChangesPanel: () => void
-  /** Switch to the next/prev theme (cycling through the available themes) */
   cycleTheme: () => void
-  /** Set a specific theme by ID */
   setTheme: (id: string) => void
   setHighlightTheme: (t: HighlightThemeId) => void
   setLanguage: (lang: Lang) => void
   setLastFilePath: (path: string | null) => void
   setLastRootPath: (path: string | null) => void
+  addRecentFile: (path: string) => void
+  addRecentFolder: (path: string) => void
+  removeRecentFile: (path: string) => void
+  removeRecentFolder: (path: string) => void
+  setSaveStatus: (status: SaveStatus, lastSavedAt?: number | null) => void
   togglePlugin: (id: string) => void
   setFont: (id: string) => void
   setFontSize: (n: number) => void
@@ -58,6 +60,10 @@ export const useEditorStore = create<EditorState>()(
       language: 'en',
       lastFilePath: null,
       lastRootPath: null,
+      recentFiles: [],
+      recentFolders: [],
+      saveStatus: 'saved',
+      lastSavedAt: null,
       disabledPlugins: [],
       font: DEFAULT_FONT_ID,
       fontSize: 14,
@@ -66,25 +72,44 @@ export const useEditorStore = create<EditorState>()(
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleFileTree: () => set(s => ({ showFileTree: !s.showFileTree })),
+      toggleChangesPanel: () => undefined,
       cycleTheme: () => set(s => {
         const idx = editorThemes.findIndex(t => t.id === s.theme)
         const next = (idx + 1) % editorThemes.length
         const nextTheme = editorThemes[next]
-        return { theme: nextTheme.id, highlightTheme: nextTheme.highlightThemeId as any }
+        return { theme: nextTheme.id, highlightTheme: nextTheme.highlightThemeId as HighlightThemeId }
       }),
       setTheme: (id) => {
         const theme = getTheme(id)
-        if (theme) set({ theme: id, highlightTheme: theme.highlightThemeId as any })
+        if (theme) set({ theme: id, highlightTheme: theme.highlightThemeId as HighlightThemeId })
       },
       setHighlightTheme: (t) => set({ highlightTheme: t }),
       setLanguage: (lang) => {
         set({ language: lang })
-        if (window.electronAPI) {
-          window.electronAPI.setLanguage(lang)
-        }
+        if (window.electronAPI) window.electronAPI.setLanguage(lang)
       },
       setLastFilePath: (path) => set({ lastFilePath: path }),
       setLastRootPath: (path) => set({ lastRootPath: path }),
+      addRecentFile: (path) => set((state) => ({
+        recentFiles: [path, ...state.recentFiles.filter((item) => item !== path)].slice(0, 10),
+        lastFilePath: path,
+      })),
+      addRecentFolder: (path) => set((state) => ({
+        recentFolders: [path, ...state.recentFolders.filter((item) => item !== path)].slice(0, 10),
+        lastRootPath: path,
+      })),
+      removeRecentFile: (path) => set((state) => ({
+        recentFiles: state.recentFiles.filter((item) => item !== path),
+        lastFilePath: state.lastFilePath === path ? null : state.lastFilePath,
+      })),
+      removeRecentFolder: (path) => set((state) => ({
+        recentFolders: state.recentFolders.filter((item) => item !== path),
+        lastRootPath: state.lastRootPath === path ? null : state.lastRootPath,
+      })),
+      setSaveStatus: (status, lastSavedAt) => set((state) => ({
+        saveStatus: status,
+        lastSavedAt: lastSavedAt === undefined ? state.lastSavedAt : lastSavedAt,
+      })),
       togglePlugin: (id) => set(s => {
         const disabled = [...s.disabledPlugins]
         const idx = disabled.indexOf(id)
@@ -108,6 +133,8 @@ export const useEditorStore = create<EditorState>()(
         sidebarWidth: state.sidebarWidth,
         lastFilePath: state.lastFilePath,
         lastRootPath: state.lastRootPath,
+        recentFiles: state.recentFiles,
+        recentFolders: state.recentFolders,
         disabledPlugins: state.disabledPlugins,
         font: state.font,
         fontSize: state.fontSize,

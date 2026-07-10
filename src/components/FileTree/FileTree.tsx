@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
-import { useEditorStore } from '../../stores/editorStore'
 import { useT } from '../../lib/i18n'
+import { useToastStore } from '../../stores/toastStore'
 import { createNewFile } from '../../lib/commands'
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index'
 import type { FileEntry } from '../../types/electron'
@@ -63,6 +63,7 @@ function FileIcon({ name, isDirectory, isExpanded }: { name: string; isDirectory
 }
 
 function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onContextMenu, isRenaming, onRenameTriggered, activeTabPath, expandedDirs, childrenMap, loadingDirs }: TreeNodeProps) {
+  const t = useT()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -195,7 +196,7 @@ function TreeNode({ entry, depth, onClick, onExpand, onAddFile, onRename, onCont
             className="ml-auto text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-default shrink-0"
             style={{ color: 'var(--accent)' }}
             onClick={e => { e.stopPropagation(); onAddFile(entry) }}
-            title="New File"
+            title={t('fileTree.addFile')}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <line x1="6" y1="2" x2="6" y2="10" /><line x1="2" y1="6" x2="10" y2="6" />
@@ -241,14 +242,48 @@ export function FileTree() {
   const openFile = useWorkspaceStore(s => s.openFile)
   const activeTabPath = useWorkspaceStore(s => s.activeTabPath)
   const t = useT()
+  const showToast = useToastStore(s => s.showToast)
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
 
   // 加载根目录
+  // Load root directory only when root or explicit refresh signal changes.
   useEffect(() => {
-    if (!root || !window.electronAPI) return
-    setExpandedDirs(new Set())
-    setChildrenMap({})
-    window.electronAPI.listDir(root).then(setEntries).catch(() => setEntries([]))
+    let cancelled = false
+
+    const loadRoot = async () => {
+      if (!root || !window.electronAPI) {
+        if (!cancelled) setEntries([])
+        return
+      }
+
+      try {
+        const saved = localStorage.getItem(`markedit-expanded-dirs:${root}`)
+        const nextExpanded = new Set(saved ? JSON.parse(saved) as string[] : [])
+        const nextEntries = await window.electronAPI.listDir(root)
+        if (cancelled) return
+        setChildrenMap({})
+        setExpandedDirs(nextExpanded)
+        setEntries(nextEntries)
+      } catch (error) {
+        if (cancelled) return
+        setEntries([])
+        useToastStore.getState().showToast({ type: 'error', message: tRef.current('toast.folderOpenFailed'), detail: error instanceof Error ? error.message : String(error) })
+      }
+    }
+
+    void loadRoot()
+    return () => {
+      cancelled = true
+    }
   }, [root, refreshSignal])
+
+  useEffect(() => {
+    if (!root) return
+    localStorage.setItem(`markedit-expanded-dirs:${root}`, JSON.stringify([...expandedDirs]))
+  }, [expandedDirs, root])
 
   const handleExpand = useCallback(async (entry: FileEntry) => {
     if (!entry.isDirectory || !window.electronAPI) return
@@ -282,6 +317,36 @@ export function FileTree() {
     }
   }, [expandedDirs, childrenMap])
 
+  // auto-expand active file parents when switching tabs
+  useEffect(() => {
+    if (!activeTabPath || !root || !window.electronAPI) return
+    const normalizedRoot = root.replace(/\\/g, '/')
+    const normalizedPath = activeTabPath.replace(/\\/g, '/')
+    if (!normalizedPath.startsWith(normalizedRoot)) return
+
+    const relative = normalizedPath.slice(normalizedRoot.length).replace(/^\//, '')
+    const parts = relative.split('/').filter(Boolean)
+    if (parts.length <= 1) return
+
+    const dirs: string[] = []
+    let current = root.replace(/[\\/]$/, '')
+    for (const part of parts.slice(0, -1)) {
+      current = current + '/' + part
+      dirs.push(current)
+    }
+
+    setExpandedDirs(prev => new Set([...prev, ...dirs]))
+    dirs.forEach(async (dir) => {
+      if (childrenMap[dir]) return
+      try {
+        const children = await window.electronAPI!.listDir(dir)
+        setChildrenMap(prev => ({ ...prev, [dir]: prev[dir] || children }))
+      } catch {
+        // ignore missing folders; the next refresh will reconcile
+      }
+    })
+  }, [activeTabPath, root, childrenMap])
+
   const handleClick = async (entry: FileEntry) => {
     if (!window.electronAPI) return
     const { content } = await window.electronAPI.readFile(entry.path)
@@ -294,11 +359,29 @@ export function FileTree() {
     if (path) {
       const children = await window.electronAPI.listDir(entry.path)
       setChildrenMap(prev => ({ ...prev, [entry.path]: children }))
+      setExpandedDirs(prev => new Set(prev).add(entry.path))
       openFile(path, '')
+      showToast({ type: 'success', message: t('toast.fileCreated'), detail: path })
+    } else {
+      showToast({ type: 'error', message: t('toast.fileCreateFailed') })
     }
-  }, [openFile])
+  }, [openFile, showToast, t])
 
   // 右键菜单
+  const handleRootNewFile = useCallback(async () => {
+    if (!root) return
+    await handleAddFile({ name: root.split(/[\/\\]/).pop() || root, path: root, isDirectory: true })
+  }, [handleAddFile, root])
+
+  const handleRefresh = useCallback(() => {
+    useWorkspaceStore.getState().triggerRefresh()
+    showToast({ type: 'info', message: t('toast.fileTreeRefreshed'), duration: 1600 })
+  }, [showToast, t])
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedDirs(new Set())
+  }, [])
+
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: FileEntry } | null>(null)
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
 
@@ -311,65 +394,76 @@ export function FileTree() {
   const handleDelete = useCallback(async (entry: FileEntry) => {
     if (!window.electronAPI) return
     setCtxMenu(null)
-    const ok = entry.isDirectory
-      ? await window.electronAPI.deleteDir(entry.path)
-      : await window.electronAPI.deleteFile(entry.path)
-    if (ok) {
+    const confirmed = window.confirm(t(entry.isDirectory ? 'confirm.deleteFolder' : 'confirm.deleteFile', { name: entry.name }))
+    if (!confirmed) return
+    try {
+      const ok = entry.isDirectory ? await window.electronAPI.deleteDir(entry.path) : await window.electronAPI.deleteFile(entry.path)
+      if (!ok) throw new Error(entry.path)
       const store = useWorkspaceStore.getState()
       const isOpen = store.openTabs.some(t => t.path === entry.path)
       if (isOpen) store.closeTab(entry.path)
       store.triggerRefresh()
+      showToast({ type: 'success', message: t(entry.isDirectory ? 'toast.folderDeleted' : 'toast.fileDeleted'), detail: entry.path })
+    } catch (error) {
+      showToast({ type: 'error', message: t('toast.deleteFailed'), detail: error instanceof Error ? error.message : String(error) })
     }
-  }, [])
+  }, [showToast, t])
 
   const handleRename = useCallback(async (entry: FileEntry, newName: string): Promise<boolean> => {
     if (!window.electronAPI) return false
-
     const parentDir = entry.path.substring(0, Math.max(entry.path.lastIndexOf('/'), entry.path.lastIndexOf('\\')))
     const newPath = parentDir + '/' + newName
-
     if (newPath === entry.path) return false
-
     const ok = await window.electronAPI.rename(entry.path, newPath)
-    if (!ok) return false
-
+    if (!ok) {
+      showToast({ type: 'error', message: t('toast.renameFailed'), detail: entry.path })
+      return false
+    }
     const store = useWorkspaceStore.getState()
     const isOpen = store.openTabs.some(t => t.path === entry.path)
-    if (isOpen) {
-      store.updateTabPath(entry.path, newPath)
-    }
-
+    if (isOpen) store.updateTabPath(entry.path, newPath)
     store.triggerRefresh()
+    showToast({ type: 'success', message: t('toast.renamed'), detail: newPath })
     return true
-  }, [])
+  }, [showToast, t])
 
   const isRenamingEntry = (path: string) => renamingPath === path
-  const triggerRename = (path: string) => setRenamingPath(path)
   const clearRenaming = () => setRenamingPath(null)
 
   const ctxMenuItems: ContextMenuItem[] = ctxMenu ? [
-    { id: 'rename', label: 'Rename', action: () => {
+    { id: 'rename', label: t('fileTree.rename'), action: () => {
       setCtxMenu(null)
       setRenamingPath(ctxMenu.entry.path)
     }},
     ctxMenu.entry.isDirectory
-      ? { id: 'new-file', label: 'New File', action: () => { setCtxMenu(null); handleAddFile(ctxMenu.entry) } }
+      ? { id: 'new-file', label: t('fileTree.addFile'), action: () => { setCtxMenu(null); handleAddFile(ctxMenu.entry) } }
       : null,
     { id: 'div1', divider: true },
-    { id: 'delete', label: ctxMenu.entry.isDirectory ? 'Delete Folder' : 'Delete', action: () => handleDelete(ctxMenu.entry) },
+    { id: 'delete', label: ctxMenu.entry.isDirectory ? t('fileTree.deleteFolder') : t('fileTree.delete'), action: () => handleDelete(ctxMenu.entry) },
   ].filter(Boolean) as ContextMenuItem[] : []
 
   return (
-    <div className="h-full flex flex-col text-sm" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+    <div className="h-full min-h-0 flex flex-col text-sm" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b select-none shrink-0" style={{ borderColor: 'var(--border)' }}>
         <span className="font-medium text-xs uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>
           {t('fileTree.title')}
         </span>
+        <div className="flex items-center gap-1">
+          <button title={t('fileTree.addFile')} onClick={handleRootNewFile} className="flex h-6 w-6 items-center justify-center rounded" style={{ color: 'var(--text-dim)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="6" y1="2" x2="6" y2="10" /><line x1="2" y1="6" x2="10" y2="6" /></svg>
+          </button>
+          <button title={t('fileTree.refresh')} onClick={handleRefresh} className="flex h-6 w-6 items-center justify-center rounded" style={{ color: 'var(--text-dim)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M13 8a5 5 0 1 1-1.5-3.5" /><polyline points="13,2 13,6 9,6" /></svg>
+          </button>
+          <button title={t('fileTree.collapseAll')} onClick={handleCollapseAll} className="flex h-6 w-6 items-center justify-center rounded" style={{ color: 'var(--text-dim)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M4 6h8M4 10h8" /></svg>
+          </button>
+        </div>
       </div>
 
       {/* File list */}
-      <div className="flex-1 overflow-y-auto py-0.5">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-0.5">
         {entries.length === 0 && (
           <div className="px-4 py-10 text-center" style={{ color: 'var(--text-dim)' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="mx-auto mb-2" style={{ opacity: 0.3 }}>
