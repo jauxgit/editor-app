@@ -70,17 +70,27 @@ export function AppLayout() {
 
   const activeTab = tabs.find((t) => t.path === activeTabPath);
 
+  const tocClickLockUntil = useRef(0);
+
   const handleTocItemClick = useCallback(
     (id: string) => {
       if (viewMode === 'source') return;
+      // 立即高亮，并在 smooth scroll 期间锁定，避免 observer 中途覆盖
+      setActiveTocId(id);
+      tocClickLockUntil.current = Date.now() + 450;
       const previewEl = document.querySelector('.markdown-preview');
       const heading = previewEl?.querySelector(`#${CSS.escape(id)}`);
       if (heading) {
-        heading.scrollIntoView({ behavior: 'smooth' });
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
     [viewMode],
   );
+
+  const handleActiveTocIdChange = useCallback((id: string | null) => {
+    if (Date.now() < tocClickLockUntil.current) return;
+    setActiveTocId(id);
+  }, []);
 
   // Register command palette commands
 
@@ -805,7 +815,7 @@ useEffect(() => {
                         scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
                         onScrollChange={viewMode === 'split' ? setScrollRatio : undefined}
                         onTocChange={setTocItems}
-                        onActiveIdChange={setActiveTocId}
+                        onActiveIdChange={handleActiveTocIdChange}
                       />
                     </div>
                   )}
