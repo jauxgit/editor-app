@@ -47,11 +47,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 语言切换 =====
   setLanguage: (lang) => ipcRenderer.send('language:changed', lang),
 
-  // ===== 下载更新 =====
+  // ===== 下载 / 更新 =====
   startDownload: (url, filename) => ipcRenderer.invoke('download:start', { url, filename }),
   onDownloadProgress: (callback) => {
     ipcRenderer.on('download:progress', (_e, data) => callback(data))
   },
+  installAndRestart: (installerPath) =>
+    ipcRenderer.invoke('update:installAndRestart', installerPath),
 
   // ===== 全局搜索 =====
   searchFiles: (root, query) => ipcRenderer.invoke('search:files', root, query),
