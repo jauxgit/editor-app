@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { TocItem } from '../Preview/MarkdownPreview';
 import { useT } from '../../lib/i18n';
 
@@ -13,6 +14,14 @@ interface Props {
  */
 export function TocView({ items, activeId, onItemClick }: Props) {
   const t = useT();
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // 活跃项变化时，确保大纲列表滚到可见区域
+  useEffect(() => {
+    if (!activeId || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-toc-id="${CSS.escape(activeId)}"]`);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeId]);
 
   if (items.length === 0) {
     return (
@@ -23,11 +32,12 @@ export function TocView({ items, activeId, onItemClick }: Props) {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto overscroll-contain py-1">
+    <div ref={listRef} className="h-full min-h-0 overflow-y-auto overscroll-contain py-1">
       {items.map((item) => (
         <a
           key={item.id}
           href={`#${item.id}`}
+          data-toc-id={item.id}
           className={`toc-link toc-level-${item.level} ${activeId === item.id ? 'toc-active' : ''}`}
           onClick={(e) => {
             e.preventDefault();

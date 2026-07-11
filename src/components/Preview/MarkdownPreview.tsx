@@ -103,25 +103,57 @@ export function MarkdownPreview({ content, scrollRatio, onScrollChange, onTocCha
     return () => el.removeEventListener('scroll', handler);
   }, [onScrollChange]);
 
-  // Scroll-spy：IntersectionObserver 高亮当前标题
+  // Scroll-spy：按滚动位置高亮「最接近预览顶部」的标题
   useEffect(() => {
-    if (!ref.current || tocItems.length === 0) return;
-    const headings = ref.current.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
-    if (headings.length === 0) return;
+    const root = ref.current;
+    if (!root || tocItems.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
-            break;
-          }
+    let raf = 0;
+    const updateActive = () => {
+      const headings = root.querySelectorAll<HTMLElement>(
+        'h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]',
+      );
+      if (headings.length === 0) return;
+
+      const rootTop = root.getBoundingClientRect().top;
+      // 激活线：预览可视区顶部向下 8px（紧贴标题进入顶部时切换）
+      const markerY = root.scrollTop + 8;
+
+      let current = headings[0].id;
+      for (const h of headings) {
+        // 标题相对滚动内容顶部的绝对位置（比单纯 getBoundingClientRect 更稳）
+        const headingTop = h.getBoundingClientRect().top - rootTop + root.scrollTop;
+        if (headingTop <= markerY) {
+          current = h.id;
+        } else {
+          break;
         }
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    headings.forEach((h) => observer.observe(h));
-    return () => observer.disconnect();
+      }
+
+      // 滚到文档底部时锁定最后一个标题，避免底部空白区高亮回跳
+      const atBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - 2;
+      if (atBottom) {
+        current = headings[headings.length - 1].id;
+      }
+
+      setActiveId((prev) => (prev === current ? prev : current));
+    };
+
+    const onScroll = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateActive);
+    };
+
+    updateActive();
+    root.addEventListener('scroll', onScroll, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onScroll) : null;
+    ro?.observe(root);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      root.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
   }, [html, tocItems]);
 
   // 代码块复制按钮
