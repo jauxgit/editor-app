@@ -1,7 +1,7 @@
 {
   "name": "markedit",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.3.0",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -36,7 +36,9 @@
       "shortcutName": "MarkEdit · 码记",
       "uninstallDisplayName": "MarkEdit · 码记",
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "uninstallerIcon": "build/icon.ico",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
       "target": "dmg",

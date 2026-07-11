@@ -9,6 +9,7 @@ import {
   protocol,
   shell,
 } from 'electron';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
@@ -684,16 +685,19 @@ ipcMain.handle('window:isMaximized', () => {
 });
 
 // ===== 下载更新 =====
+// 只负责下载到 userData/updates，不再自动打开安装界面。
+// 静默安装 + 重启由 installAndRestart 处理。
 ipcMain.handle('download:start', async (event, { url, filename }) => {
-  const win = BrowserWindow.getFocusedWindow();
+  const win =
+    BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
   if (!win) return { success: false, reason: 'no_window' };
 
-  // 下载到用户数据目录的 updates 子目录
   const updatesDir = join(app.getPath('userData'), 'updates');
   await mkdir(updatesDir, { recursive: true });
-  const filePath = join(updatesDir, filename || 'MarkEdit.Setup.exe');
+  const safeName = (filename || 'MarkEdit.Setup.exe').replace(/[<>:"/\\|?*]/g, '_');
+  const filePath = join(updatesDir, safeName);
 
-  // 清理上次残留的安装包
+  // 清理上次残留的同名安装包
   try {
     await unlink(filePath);
   } catch {
@@ -727,7 +731,6 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
       }
     }
 
-    // 写入文件
     const totalLength = chunks.reduce((s, c) => s + c.length, 0);
     const buffer = Buffer.alloc(totalLength);
     let offset = 0;
@@ -736,9 +739,6 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
       offset += chunk.length;
     }
     await writeFile(filePath, buffer);
-
-    // 下载完成 -> 启动安装程序
-    shell.openPath(filePath);
 
     win.webContents.send('download:progress', {
       done: true,
@@ -754,10 +754,62 @@ ipcMain.handle('download:start', async (event, { url, filename }) => {
   }
 });
 
+/**
+ * 静默安装并重启：
+ * - Windows NSIS: /S 静默 + 安装完成后自动启动（runAfterFinish）
+ * - 先 spawn 安装程序，再退出当前进程，避免文件被占用
+ */
+ipcMain.handle('update:installAndRestart', async (_e, installerPath) => {
+  if (!installerPath || typeof installerPath !== 'string') {
+    return { success: false, reason: 'invalid_path' };
+  }
+  if (!existsSync(installerPath)) {
+    return { success: false, reason: 'installer_not_found' };
+  }
+
+  try {
+    const platform = process.platform;
+    let child;
+
+    if (platform === 'win32') {
+      // NSIS silent install. /S = silent; electron-builder keeps previous install dir.
+      // Detached so installer continues after we quit.
+      child = spawn(installerPath, ['/S'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+    } else if (platform === 'darwin') {
+      // macOS: open the dmg/pkg — silent overwrite is limited without elevated tools
+      child = spawn('open', [installerPath], {
+        detached: true,
+        stdio: 'ignore',
+      });
+    } else {
+      // Linux AppImage or generic executable
+      child = spawn(installerPath, [], {
+        detached: true,
+        stdio: 'ignore',
+      });
+    }
+
+    child.unref();
+
+    // Give the installer a moment to start, then quit so files can be replaced
+    setTimeout(() => {
+      app.quit();
+    }, 400);
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, reason: err.message };
+  }
+});
+
 // ===== App Lifecycle =====
 app.whenReady().then(() => {
   registerCustomProtocol();
-  const win = createWindow();
+  createWindow();
 
   // 由渲染进程主动拉取启动参数，避免 IPC 时序竞争
 

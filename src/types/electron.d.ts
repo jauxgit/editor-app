@@ -54,6 +54,8 @@ export interface ElectronAPI {
   // 下载更新
   startDownload: (url: string, filename?: string) => Promise<{ success: boolean; filePath?: string; reason?: string }>
   onDownloadProgress: (callback: (data: { received: number; total: number; percent: number; done?: boolean; filePath?: string }) => void) => void
+  /** 静默安装已下载的安装包并退出当前进程，安装完成后自动重启 */
+  installAndRestart: (installerPath: string) => Promise<{ success: boolean; reason?: string }>
   // 全局搜索
   searchFiles: (root: string, query: string) => Promise<SearchResult[]>
 

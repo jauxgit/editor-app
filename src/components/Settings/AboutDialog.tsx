@@ -1,101 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useT } from '../../lib/i18n';
+import { APP_VERSION, GITHUB_RELEASES, GITHUB_URL } from '../../lib/update';
+import { useUpdateStore } from '../../stores/updateStore';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.1.0';
-const GITHUB_URL = 'https://github.com/jauxgit/editor-app';
-const GITHUB_API = 'https://api.github.com/repos/jauxgit/editor-app/releases/latest';
-const GITHUB_RELEASES = 'https://github.com/jauxgit/editor-app/releases/latest';
-
-type UpdateState =
-  | 'idle'
-  | 'checking'
-  | 'latest'
-  | 'available'
-  | 'downloading'
-  | 'downloaded'
-  | 'error';
-
-/** 简单版本号比较：返回 true 如果 latest > current */
-function isNewerVersion(latest: string, current: string): boolean {
-  const la = latest.replace(/^v/, '').split('.').map(Number);
-  const ca = current.replace(/^v/, '').split('.').map(Number);
-  for (let i = 0; i < Math.max(la.length, ca.length); i++) {
-    const l = la[i] || 0;
-    const c = ca[i] || 0;
-    if (l !== c) return l > c;
-  }
-  return false;
-}
-
-const API_ASSETS_CACHE: { version: string; url: string; name: string }[] = [];
+// Re-export for any accidental external imports (keep name stable)
+const GITHUB_REPO_URL = GITHUB_URL || 'https://github.com/jauxgit/editor-app';
 
 export function AboutDialog({ isOpen, onClose }: Props) {
   const t = useT();
   const [visible, setVisible] = useState(false);
-  const [updateState, setUpdateState] = useState<UpdateState>('idle');
-  const [latestVersion, setLatestVersion] = useState('');
-  const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const checkUpdate = useCallback(async () => {
-    setUpdateState('checking');
-    try {
-      const res = await fetch(GITHUB_API);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const tag: string = data.tag_name || '';
-      const version = tag.replace(/^v/, '');
-      // 缓存 assets 信息用于后续下载
-      API_ASSETS_CACHE.length = 0;
-      for (const asset of data.assets || []) {
-        API_ASSETS_CACHE.push({ version, url: asset.browser_download_url, name: asset.name });
-      }
-      if (isNewerVersion(version, APP_VERSION)) {
-        setLatestVersion(version);
-        setUpdateState('available');
-      } else {
-        setUpdateState('latest');
-      }
-    } catch {
-      setUpdateState('error');
-    }
-  }, []);
+  const status = useUpdateStore((s) => s.status);
+  const latestVersion = useUpdateStore((s) => s.latestVersion);
+  const progress = useUpdateStore((s) => s.progress);
+  const checkForUpdates = useUpdateStore((s) => s.checkForUpdates);
+  const startDownload = useUpdateStore((s) => s.startDownload);
+  const installAndRestart = useUpdateStore((s) => s.installAndRestart);
 
-  const handleDownload = useCallback(async () => {
-    const asset = API_ASSETS_CACHE.find((a) => a.name.includes('Setup')) || API_ASSETS_CACHE[0];
-    if (!asset) return;
+  const handleCheck = useCallback(() => {
+    void checkForUpdates({ silent: false });
+  }, [checkForUpdates]);
 
-    setUpdateState('downloading');
-    setDownloadProgress(0);
-
-    const api = window.electronAPI;
-    if (!api) return;
-
-    // 监听下载进度
-    api.onDownloadProgress((data) => {
-      setDownloadProgress(data.percent);
-      if (data.done) {
-        setUpdateState('downloaded');
-      }
-    });
-
-    const result = await api.startDownload(asset.url, asset.name);
-    if (!result.success && result.reason !== 'canceled') {
-      setUpdateState('available');
-    }
-  }, []);
-
-  // 弹窗打开时重置状态
+  // 弹窗打开时重置可见动画（不重置更新状态，避免打断后台下载）
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => setVisible(true));
-      setUpdateState('idle');
-      setLatestVersion('');
-      setDownloadProgress(0);
     } else {
       setVisible(false);
     }
@@ -117,11 +51,11 @@ export function AboutDialog({ isOpen, onClose }: Props) {
     const baseStyle = { background: 'var(--accent)', color: '#fff' };
     const hoverStyle = { background: 'var(--accent-hover)' };
 
-    switch (updateState) {
+    switch (status) {
       case 'idle':
         return (
           <button
-            onClick={checkUpdate}
+            onClick={handleCheck}
             className={btnClass}
             style={baseStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
@@ -163,7 +97,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       case 'available':
         return (
           <button
-            onClick={handleDownload}
+            onClick={() => void startDownload()}
             className={`${btnClass} inline-flex items-center justify-center gap-2`}
             style={baseStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
@@ -194,10 +128,10 @@ export function AboutDialog({ isOpen, onClose }: Props) {
               style={{ color: 'var(--text-secondary)' }}
             >
               <span className="flex-1">
-                {t('about.downloading', { percent: downloadProgress })}
+                {t('about.downloading', { percent: progress })}
               </span>
               <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
-                {downloadProgress}%
+                {progress}%
               </span>
             </div>
             <div
@@ -206,17 +140,26 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             >
               <div
                 className="h-full rounded-full transition-all duration-300"
-                style={{ width: downloadProgress + '%', background: 'var(--accent)' }}
+                style={{ width: progress + '%', background: 'var(--accent)' }}
               />
             </div>
           </div>
         );
-      case 'downloaded':
+      case 'ready':
         return (
           <div className="space-y-2">
             <div className="text-center text-xs" style={{ color: 'var(--text-dim)' }}>
               {t('about.downloadComplete')}
             </div>
+            <button
+              onClick={() => void installAndRestart()}
+              className={btnClass}
+              style={baseStyle}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
+              onMouseLeave={(e) => Object.assign(e.currentTarget.style, baseStyle)}
+            >
+              {t('about.restartToUpdate')}
+            </button>
           </div>
         );
       case 'error':
@@ -227,7 +170,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={checkUpdate}
+                onClick={handleCheck}
                 className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={baseStyle}
                 onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
@@ -257,7 +200,6 @@ export function AboutDialog({ isOpen, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-200"
       style={{
         background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-        // backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
       }}
       onClick={onClose}
     >
@@ -277,7 +219,6 @@ export function AboutDialog({ isOpen, onClose }: Props) {
           className="flex flex-col items-center pt-8 pb-5 px-6"
           style={{ background: 'var(--bg-surface)' }}
         >
-          {/* App icon */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3"
             style={{ background: 'var(--accent-muted)' }}
@@ -300,10 +241,8 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             </svg>
           </div>
 
-          {/* App name */}
           <h1 className="text-lg font-semibold tracking-tight">MarkEdit · 码记</h1>
 
-          {/* Version */}
           <span className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>
             v{APP_VERSION}
           </span>
@@ -311,15 +250,12 @@ export function AboutDialog({ isOpen, onClose }: Props) {
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* Description */}
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {t('about.description')}
           </p>
 
-          {/* Divider */}
           <div className="border-t" style={{ borderColor: 'var(--border)' }} />
 
-          {/* Author */}
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
@@ -335,9 +271,8 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             </div>
           </div>
 
-          {/* GitHub link */}
           <a
-            href={GITHUB_URL}
+            href={GITHUB_REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-colors"
@@ -366,7 +301,6 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             </svg>
           </a>
 
-          {/* Tech stack */}
           <div className="flex flex-wrap gap-1.5">
             {['Electron', 'React 19', 'CodeMirror 6', 'Tailwind 4', 'TypeScript', 'Vite 8'].map(
               (tech) => (
@@ -381,12 +315,10 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             )}
           </div>
 
-          {/* Update check */}
           <div className="border-t" style={{ borderColor: 'var(--border)' }} />
           <div>{renderUpdateButton()}</div>
         </div>
 
-        {/* Close button */}
         <div className="px-6 pb-5">
           <button
             onClick={onClose}
