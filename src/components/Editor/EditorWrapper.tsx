@@ -18,6 +18,7 @@ import { warmEditorTheme, warmSyntaxHighlight } from '../../lib/cm6Theme';
 import { removeActiveEditorView, setActiveEditorView } from '../../lib/commands';
 import { getFont } from '../../lib/editorFonts';
 import { PluginRegistry, usePlugins } from '../../lib/pluginRegistry';
+import { saveActiveTab } from '../../lib/workspaceActions';
 import { imageInlinePlugin } from '../../plugins/builtin/imagePlugin';
 import { useEditorStore } from '../../stores/editorStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
@@ -199,61 +200,25 @@ export function EditorWrapper({ docPath, onScrollChange }: Props) {
     }
   }, [tab?.content]);
 
-  // ===== 保存逻辑（处理 untitled 标签 + 保存对话框） =====
-  const saveCurrentFile = useCallback(async () => {
-    if (!viewRef.current || !window.electronAPI) return false;
-    const content = viewRef.current.state.doc.toString();
-    const store = useWorkspaceStore.getState();
-    const currentTab = store.openTabs.find((t) => t.path === docPath);
-    if (!currentTab) return false;
-
-    // untitled 文件 → 弹出保存对话框
-    if (currentTab?.isUntitled) {
-      const defaultDir = store.root || undefined;
-      const savePath = await window.electronAPI.saveDialog(defaultDir);
-      if (!savePath) return false;
-
-      await window.electronAPI.writeFile(savePath, content);
-      store.updateTabPath(docPath, savePath);
-      store.markClean(savePath);
-
-      // 如果没有打开过文件夹，设 root 为保存位置的父目录
-      if (!store.root) {
-        const parentDir = savePath.substring(
-          0,
-          Math.max(savePath.lastIndexOf('/'), savePath.lastIndexOf('\\')),
-        );
-        store.setRoot(parentDir);
-      }
-      store.triggerRefresh();
-      return true;
-    }
-
-    // 普通文件直接保存
-    await window.electronAPI.writeFile(docPath, content);
-    store.markClean(docPath);
-    return true;
-  }, [docPath]);
-
-  // 注册 Electron 菜单保存事件
+  // 注册 Electron 菜单保存事件 → 统一走 workspaceActions
   useEffect(() => {
     if (!window.electronAPI) return;
     window.electronAPI.onMenuSave(() => {
-      saveCurrentFile();
+      void saveActiveTab();
     });
-  }, [saveCurrentFile]);
+  }, []);
 
   // Ctrl+S 保存
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        saveCurrentFile();
+        void saveActiveTab();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [saveCurrentFile]);
+  }, []);
 
   // 滚动位置同步 — rAF 轮询检测滚动变化
   useEffect(() => {

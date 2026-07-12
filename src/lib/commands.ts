@@ -40,15 +40,22 @@ export function getActiveEditorView(): import('@codemirror/view').EditorView | n
   return result
 }
 
-export async function createNewFile(dir: string): Promise<string | null> {
+/** Join dir + name with a single separator (Windows-safe for our listDir paths). */
+export function joinPath(dir: string, name: string): string {
+  return dir.replace(/[\\/]$/, '') + '/' + name
+}
+
+/**
+ * Write a brand-new empty file under dir with the given name.
+ * Returns the full path, or null on failure / name conflict.
+ * Callers must provide the final filename (no auto "untitled.md").
+ */
+export async function writeNamedFile(dir: string, fileName: string): Promise<string | null> {
   if (!window.electronAPI) return null
   try {
     const entries = await window.electronAPI.listDir(dir)
-    const names = new Set(entries.map(e => e.name))
-    let counter = 1
-    while (names.has(counter === 1 ? 'untitled.md' : `untitled-${counter}.md`)) counter++
-    const filename = counter === 1 ? 'untitled.md' : `untitled-${counter}.md`
-    const filePath = dir.replace(/[\\/]$/, '') + '/' + filename
+    if (entries.some(e => e.name === fileName)) return null
+    const filePath = joinPath(dir, fileName)
     await window.electronAPI.writeFile(filePath, '')
     return filePath
   } catch {

@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+docs
 release*
 node_modules
 dist
@@ -31,4 +32,4 @@ dist-ssr
 CLAUDE.md
 .trae/documents/slim-down-app-asar.md
 .codegraph
-
+.agents
