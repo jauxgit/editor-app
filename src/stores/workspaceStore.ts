@@ -24,7 +24,11 @@ interface WorkspaceState {
   setActiveTab: (path: string) => void
   updateContent: (path: string, content: string) => void
   markClean: (path: string) => void
-  updateTabPath: (oldPath: string, newPath: string) => void
+  updateTabPath: (
+    oldPath: string,
+    newPath: string,
+    opts?: { contentWritten?: boolean; content?: string },
+  ) => void
   triggerRefresh: () => void
 }
 
@@ -133,19 +137,46 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     useEditorStore.getState().setSaveStatus('unsaved')
   },
 
-  updateTabPath: (oldPath, newPath) => {
+  updateTabPath: (oldPath, newPath, opts) => {
     const state = get()
     const tab = state.openTabs.find(t => t.path === oldPath)
     if (!tab) return
     const name = newPath.split(/[/\\]/).pop() || newPath
+    const contentWritten = opts?.contentWritten ?? true
+    const content = opts?.content ?? tab.content
     set({
-      openTabs: state.openTabs.map(t =>
-        t.path === oldPath ? { ...t, path: newPath, name, isUntitled: false, isDirty: false, savedContent: t.content } : t
-      ),
+      openTabs: state.openTabs.map(t => {
+        if (t.path !== oldPath) return t
+        if (contentWritten) {
+          return {
+            ...t,
+            path: newPath,
+            name,
+            content,
+            isUntitled: false,
+            isDirty: false,
+            savedContent: content,
+          }
+        }
+        // Path-only change: keep dirty state relative to last real save.
+        return {
+          ...t,
+          path: newPath,
+          name,
+          isUntitled: false,
+          isDirty: content !== t.savedContent,
+          content,
+        }
+      }),
       activeTabPath: state.activeTabPath === oldPath ? newPath : state.activeTabPath,
     })
     useEditorStore.getState().addRecentFile(newPath)
-    useEditorStore.getState().setSaveStatus('saved', Date.now())
+    if (contentWritten) {
+      useEditorStore.getState().setSaveStatus('saved', Date.now())
+    } else {
+      const stillDirty = content !== tab.savedContent
+      useEditorStore.getState().setSaveStatus(stillDirty ? 'unsaved' : 'saved', stillDirty ? undefined : Date.now())
+    }
   },
 
   triggerRefresh: () => set({ refreshSignal: get().refreshSignal + 1 }),

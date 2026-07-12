@@ -1,10 +1,16 @@
 import { redo, undo } from '@codemirror/commands';
 import { openSearchPanel } from '@codemirror/search';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createNewFile, getActiveEditorView } from '../../lib/commands';
+import { getActiveEditorView } from '../../lib/commands';
 import { useT } from '../../lib/i18n';
+import {
+  createNewDocument,
+  openFileFromDialog,
+  openFolderFromDialog,
+  saveActiveTab,
+} from '../../lib/workspaceActions';
 import { useEditorStore } from '../../stores/editorStore';
-import { nextUntitledId, useWorkspaceStore } from '../../stores/workspaceStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface MenuItem {
   id: string;
@@ -35,11 +41,8 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const setViewMode = useEditorStore((s) => s.setViewMode);
   const toggleFileTree = useEditorStore((s) => s.toggleFileTree);
   const cycleTheme = useEditorStore((s) => s.cycleTheme);
-  const root = useWorkspaceStore((s) => s.root);
   const closeTab = useWorkspaceStore((s) => s.closeTab);
   const activeTabPath = useWorkspaceStore((s) => s.activeTabPath);
-  const openFile = useWorkspaceStore((s) => s.openFile);
-  const setRoot = useWorkspaceStore((s) => s.setRoot);
 
   // 窗口最大化状态监听
   useEffect(() => {
@@ -103,46 +106,19 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
 
   // ===== 文件菜单动作 =====
   const openFileDialog = () => {
-    if (window.electronAPI) {
-      window.electronAPI.openFileDialog().then((result) => {
-        if (result) openFile(result.path, result.content);
-      });
-    }
+    void openFileFromDialog();
   };
 
   const openFolderDialog = () => {
-    if (window.electronAPI) {
-      window.electronAPI.openFolderDialog().then((result) => {
-        if (result) setRoot(result.path);
-      });
-    }
+    void openFolderFromDialog();
   };
 
-  const newFile = async () => {
-    const store = useWorkspaceStore.getState();
-    if (store.root) {
-      const path = await createNewFile(store.root);
-      if (path) {
-        store.openFile(path, '');
-        store.triggerRefresh();
-      }
-    } else {
-      const id = nextUntitledId();
-      store.openUntitled(id);
-    }
+  const newFile = () => {
+    void createNewDocument();
   };
 
   const saveFile = () => {
-    const view = getActiveEditorView();
-    if (view) {
-      const content = view.state.doc.toString();
-      const path = activeTabPath;
-      if (path && window.electronAPI) {
-        window.electronAPI.writeFile(path, content).then(() => {
-          useWorkspaceStore.getState().markClean(path);
-        });
-      }
-    }
+    void saveActiveTab();
   };
 
   // ===== 编辑菜单动作 =====

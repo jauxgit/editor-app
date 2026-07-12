@@ -408,32 +408,43 @@ const wordCount = useMemo(() => {
   return { words, chars: text.replace(/\s/g, '').length };
 }, [activeTab?.content]);
 
-// ===== 自动保存：监听所有标签页的脏状态，debounce 后写入磁盘 =====
-const autoSaveDelay = useEditorStore((s) => s.autoSaveDelay);
-useEffect(() => {
-  if (!autoSave || !window.electronAPI) return;
+// ===== 自动保存：debounce 后写盘；触发时从 store 重读 path，避免 rename 竞态 =====
+  const autoSaveDelay = useEditorStore((s) => s.autoSaveDelay);
+  useEffect(() => {
+    if (!autoSave || !window.electronAPI) return;
 
-  const dirtyTabs = tabs.filter(
-    (tab) => tab.isDirty && !tab.isUntitled && tab.path && tab.content !== undefined,
-  );
-  if (dirtyTabs.length === 0) return;
+    const dirtyPaths = tabs
+      .filter((tab) => tab.isDirty && !tab.isUntitled && tab.path && tab.content !== undefined)
+      .map((tab) => tab.path);
+    if (dirtyPaths.length === 0) return;
 
-  const timers = dirtyTabs.map((tab) =>
-    setTimeout(async () => {
-      try {
-        setSaveStatus('saving');
-        await window.electronAPI!.writeFile(tab.path, tab.content);
-        useWorkspaceStore.getState().markClean(tab.path);
-        showToast({ type: 'success', message: t('toast.autoSaveSuccess'), detail: tab.path, duration: 1800 });
-      } catch (error) {
-        setSaveStatus('error');
-        showToast({ type: 'error', message: t('toast.autoSaveFailed'), detail: error instanceof Error ? error.message : String(error) });
-      }
-    }, autoSaveDelay),
-  );
+    const timers = dirtyPaths.map((scheduledPath) =>
+      setTimeout(async () => {
+        // Re-resolve tab by the path at schedule time; if renamed, this entry is gone → skip.
+        const latest = useWorkspaceStore.getState().openTabs.find((item) => item.path === scheduledPath);
+        if (!latest || latest.isUntitled || !latest.isDirty) return;
+        try {
+          setSaveStatus('saving');
+          await window.electronAPI!.writeFile(latest.path, latest.content);
+          // Path may have changed mid-write; only mark clean if still the same path.
+          const after = useWorkspaceStore.getState().openTabs.find((item) => item.path === latest.path);
+          if (after && after.isDirty) {
+            useWorkspaceStore.getState().markClean(latest.path);
+            showToast({ type: 'success', message: t('toast.autoSaveSuccess'), detail: latest.path, duration: 1800 });
+          }
+        } catch (error) {
+          setSaveStatus('error');
+          showToast({
+            type: 'error',
+            message: t('toast.autoSaveFailed'),
+            detail: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }, autoSaveDelay),
+    );
 
-  return () => timers.forEach(clearTimeout);
-}, [tabs, autoSave, autoSaveDelay, t, setSaveStatus, showToast]);
+    return () => timers.forEach(clearTimeout);
+  }, [tabs, autoSave, autoSaveDelay, t, setSaveStatus, showToast]);
 
   const viewModeLabels: Record<string, string> = {
     source: t('toolbar.source'),
