@@ -48,7 +48,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
 
   const renderUpdateButton = () => {
     const btnClass = 'w-full py-2 rounded-lg text-sm font-medium transition-colors';
-    const baseStyle = { background: 'var(--accent)', color: '#fff' };
+    const baseStyle = { background: 'var(--accent)', color: 'var(--accent-contrast)' };
     const hoverStyle = { background: 'var(--accent-hover)' };
 
     switch (status) {
@@ -199,17 +199,18 @@ export function AboutDialog({ isOpen, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-200"
       style={{
-        background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+        background: visible ? 'rgba(10,8,5,0.5)' : 'rgba(10,8,5,0)',
       }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-xl border shadow-2xl overflow-hidden transition-all duration-200"
+        className="w-full max-w-sm rounded-2xl border overflow-hidden transition-all duration-200"
         style={{
           background: 'var(--bg-elevated)',
           borderColor: 'var(--border)',
           color: 'var(--text-primary)',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.96)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.12)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)',
           opacity: visible ? 1 : 0,
         }}
         onClick={(e) => e.stopPropagation()}
@@ -219,25 +220,13 @@ export function AboutDialog({ isOpen, onClose }: Props) {
           className="flex flex-col items-center pt-8 pb-5 px-6"
           style={{ background: 'var(--bg-surface)' }}
         >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3"
-            style={{ background: 'var(--accent-muted)' }}
-          >
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 48 48"
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 6H8a2 2 0 0 0-2 2v32a2 2 0 0 0 2 2h32a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-6" />
-              <polyline points="14,6 14,12 24,12 34,12 34,6" />
-              <line x1="16" y1="22" x2="32" y2="22" />
-              <line x1="16" y1="28" x2="28" y2="28" />
-              <line x1="16" y1="34" x2="24" y2="34" />
+          <div className="mb-3">
+            <svg width="56" height="56" viewBox="0 0 46 46" fill="none">
+              <rect x="7" y="5" width="32" height="36" rx="6" fill="var(--bg-elevated)" stroke="var(--border)" strokeWidth="1.5" />
+              <path d="M7 11a6 6 0 0 1 6-6h14L39 17v18a6 6 0 0 1-6 6H13a6 6 0 0 1-6-6V11z" fill="var(--bg-elevated)" stroke="var(--border)" strokeWidth="1.5" />
+              <path d="M27 5l12 12h-9a3 3 0 0 1-3-3V5z" fill="var(--accent)" />
+              <line x1="14" y1="24" x2="32" y2="24" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" />
+              <line x1="14" y1="30" x2="27" y2="30" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
             </svg>
           </div>
 
@@ -259,7 +248,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-              style={{ background: 'var(--accent)', color: '#fff' }}
+              style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
             >
               J
             </div>
@@ -325,7 +314,7 @@ export function AboutDialog({ isOpen, onClose }: Props) {
             className="w-full py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               background: 'var(--accent)',
-              color: '#fff',
+              color: 'var(--accent-contrast)',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}

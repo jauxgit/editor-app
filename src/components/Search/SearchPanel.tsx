@@ -79,7 +79,7 @@ export function SearchPanel({ onClose }: Props) {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 border-b shrink-0"
+        className="flex items-center justify-between px-4 py-3 border-b shrink-0"
         style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex items-center gap-2">
@@ -89,15 +89,14 @@ export function SearchPanel({ onClose }: Props) {
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.3"
+            strokeWidth="1.4"
             strokeLinecap="round"
+            style={{ color: 'var(--accent)' }}
           >
             <circle cx="7" cy="7" r="4" />
             <line x1="10" y1="10" x2="14" y2="14" />
           </svg>
-          <span className="font-medium text-xs uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>
-            {t('search.title')}
-          </span>
+          <span className="micro-label">{t('search.title')}</span>
         </div>
         {onClose && (
           <button
@@ -226,8 +225,8 @@ export function SearchPanel({ onClose }: Props) {
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="shrink-0 font-mono text-[10px] px-1 rounded"
-                      style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                    <span className="shrink-0 font-mono text-[10px] px-1.5 py-px rounded font-medium"
+                      style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                       {result.line}
                     </span>
                     <span className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>

@@ -43,6 +43,27 @@ function parentDir(path: string): string {
   return path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')))
 }
 
+/** Normalize separators so Windows `\` and `/` compare equal. */
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/\/+$/, '')
+}
+
+/**
+ * True if `filePath` is inside `root` (or is the root itself).
+ * Avoids false negatives when dialog root uses `\` but listDir/join used `/`,
+ * which previously made openFile treat nested files as outside the workspace
+ * and re-root the tree to the file's parent folder.
+ */
+function isPathUnderRoot(filePath: string, root: string): boolean {
+  const p = normalizePath(filePath)
+  const r = normalizePath(root)
+  if (!r) return false
+  // Case-insensitive on Windows drive/paths
+  const a = p.toLowerCase()
+  const b = r.toLowerCase()
+  return a === b || a.startsWith(b + '/')
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   root: null,
   openTabs: [],
@@ -60,10 +81,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     const currentRoot = get().root
     const dir = parentDir(path)
-    if (dir && dir !== currentRoot) {
-      if (!currentRoot || (!path.startsWith(currentRoot + '/') && !path.startsWith(currentRoot + '\\'))) {
-        get().setRoot(dir)
-      }
+    // Only switch workspace root when the file is outside the current root.
+    // Nested files under root must NOT re-root the tree to their parent dir.
+    if (dir && (!currentRoot || !isPathUnderRoot(path, currentRoot))) {
+      get().setRoot(dir)
     }
 
     const tabs = get().openTabs

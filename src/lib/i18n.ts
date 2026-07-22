@@ -121,18 +121,18 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.a11y-light': 'A11y Light',
 
     // Editor theme names
-    'editorTheme.warm-light': 'Warm Light',
-    'editorTheme.warm-dark': 'Warm Dark',
-    'editorTheme.nord': 'Nord',
+    'editorTheme.warm-light': 'Ember',
+    'editorTheme.warm-dark': 'Ember Dark',
+    'editorTheme.nord': 'Nordic',
     'editorTheme.tokyo-night': 'Tokyo Night',
-    'editorTheme.paper': 'Paper',
+    'editorTheme.paper': 'Paper Ink',
     // Editor Fonts
-    'editorFont.default': 'Default (IBM Plex + JetBrains Mono)',
+    'editorFont.default': 'Default (Sora + JetBrains Mono)',
+    'editorFont.grotesk': 'Space Grotesk + JetBrains Mono',
     'editorFont.fira': 'Inter + Fira Code',
-    'editorFont.cascadia': 'Cascadia Code',
+    'editorFont.cascadia': 'Sora + Cascadia Code',
     'editorFont.source': 'Source Sans + Source Code Pro',
     'editorFont.system': 'System UI',
-    'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': 'Outline',
     'toc.empty': 'No headings found',
@@ -289,18 +289,18 @@ const messages: Record<Lang, Record<string, string>> = {
     'theme.a11y-light': 'A11y Light',
 
     // Editor theme names
-    'editorTheme.warm-light': '暖色亮白',
-    'editorTheme.warm-dark': '暖色暗黑',
-    'editorTheme.nord': '北欧极光',
+    'editorTheme.warm-light': '焦橙',
+    'editorTheme.warm-dark': '焦橙暗夜',
+    'editorTheme.nord': '北欧冰蓝',
     'editorTheme.tokyo-night': '东京之夜',
-    'editorTheme.paper': '纸色书写',
+    'editorTheme.paper': '宣纸墨绿',
     // Editor Fonts
-    'editorFont.default': '默认 (IBM Plex + JetBrains Mono)',
+    'editorFont.default': '默认 (Sora + JetBrains Mono)',
+    'editorFont.grotesk': 'Space Grotesk + JetBrains Mono',
     'editorFont.fira': 'Inter + Fira Code',
-    'editorFont.cascadia': 'Cascadia Code',
+    'editorFont.cascadia': 'Sora + Cascadia Code',
     'editorFont.source': 'Source Sans + Source Code Pro',
     'editorFont.system': '系统默认',
-    'editorFont.legacy': 'Segoe UI + Consolas',
     // TOC / Outline
     'toc.title': '目录',
     'toc.empty': '未找到标题',

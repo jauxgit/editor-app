@@ -289,14 +289,34 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
   return (
     <div
       ref={menuRef}
-      className="flex items-center h-8 text-xs border-b select-none shrink-0"
+      className="flex items-center h-9 text-xs select-none shrink-0"
       style={{
-        background: 'var(--bg-surface)',
-        borderColor: 'var(--border)',
+        background: 'var(--bg-app)',
         color: 'var(--text-secondary)',
         WebkitAppRegion: 'drag',
       }}
     >
+      {/* Brand mark —— 与主页一致的几何 mark */}
+      <div
+        className="flex items-center gap-2 pl-3 pr-1 shrink-0"
+        style={{ WebkitAppRegion: 'no-drag' }}
+      >
+        <span className="relative shrink-0" style={{ width: 18, height: 18 }}>
+          <svg width="18" height="18" viewBox="0 0 46 46" fill="none">
+            <path d="M7 11a6 6 0 0 1 6-6h14L39 17v18a6 6 0 0 1-6 6H13a6 6 0 0 1-6-6V11z" fill="var(--bg-elevated)" stroke="var(--border)" strokeWidth="2" />
+            <path d="M27 5l12 12h-9a3 3 0 0 1-3-3V5z" fill="var(--accent)" />
+            <line x1="14" y1="24" x2="32" y2="24" stroke="var(--text-dim)" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="14" y1="30" x2="27" y2="30" stroke="var(--text-dim)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
+          </svg>
+        </span>
+        <span
+          className="text-[13px] font-semibold tracking-tight"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          码记
+        </span>
+      </div>
+
       {/* Menu items */}
       <div className="flex items-center h-full px-1 gap-0.5 flex-1 min-w-0">
         {menuGroups.map((menu) => {
@@ -307,10 +327,10 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
               <button
                 onClick={() => handleMenuClick(menu.id)}
                 onMouseEnter={() => handleMenuHover(menu.id)}
-                className="px-2.5 py-1 rounded transition-all duration-100 text-xs whitespace-nowrap"
+                className="px-2.5 py-1 rounded-md transition-all duration-100 text-xs whitespace-nowrap"
                 style={{
                   color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: isOpen ? 'var(--accent-muted)' : 'transparent',
+                  background: isOpen ? 'var(--bg-hover)' : 'transparent',
                 }}
               >
                 {menu.label}
@@ -318,12 +338,13 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
 
               {isOpen && (
                 <div
-                  className="absolute top-full left-0 z-50 w-52 py-1.5 rounded-lg border shadow-lg transition-all duration-150"
+                  className="absolute top-full left-0 z-50 w-56 py-1.5 rounded-xl border transition-all duration-150"
                   style={{
                     background: 'var(--bg-elevated)',
                     borderColor: 'var(--border)',
                     color: 'var(--text-primary)',
-                    minWidth: '210px',
+                    minWidth: '220px',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1)',
                     transformOrigin: 'top left',
                     transform: visible ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.96)',
                     opacity: visible ? 1 : 0,
@@ -333,27 +354,32 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
                     item.divider ? (
                       <div
                         key={item.id}
-                        className="mx-2 my-1 border-t"
-                        style={{ borderColor: 'var(--border)' }}
+                        className="mx-2.5 my-1 border-t"
+                        style={{ borderColor: 'var(--border-light)' }}
                       />
                     ) : (
                       <button
                         key={item.id}
                         onClick={() => handleItemClick(item)}
-                        className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs transition-colors duration-75"
+                        className="w-full flex items-center justify-between px-3 py-1.5 mx-0 text-left text-xs rounded-md transition-colors duration-75"
                         style={{ color: 'var(--text-primary)' }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'var(--accent-muted)';
-                          e.currentTarget.style.color = 'var(--accent)';
+                          e.currentTarget.style.background = 'var(--accent)';
+                          e.currentTarget.style.color = 'var(--accent-contrast)';
+                          const sc = e.currentTarget.querySelector('[data-sc]') as HTMLElement | null;
+                          if (sc) sc.style.color = 'var(--accent-contrast)';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = 'transparent';
                           e.currentTarget.style.color = 'var(--text-primary)';
+                          const sc = e.currentTarget.querySelector('[data-sc]') as HTMLElement | null;
+                          if (sc) sc.style.color = 'var(--text-dim)';
                         }}
                       >
                         <span>{item.label}</span>
                         {item.shortcut && (
                           <span
+                            data-sc
                             style={{
                               color: 'var(--text-dim)',
                               fontSize: '11px',

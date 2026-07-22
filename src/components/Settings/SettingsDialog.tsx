@@ -53,18 +53,18 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-200"
       style={{
-        background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-        // backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        background: visible ? 'rgba(10,8,5,0.5)' : 'rgba(10,8,5,0)',
       }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden transition-all duration-200"
+        className={`w-full max-w-lg rounded-2xl border overflow-hidden transition-all duration-200 ${visible ? 'mark-ping' : ''}`}
         style={{
           background: 'var(--bg-elevated)',
           borderColor: 'var(--border)',
           color: 'var(--text-primary)',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.96)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.12)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)',
           opacity: visible ? 1 : 0,
         }}
         onClick={(e) => e.stopPropagation()}
@@ -74,7 +74,7 @@ export function SettingsDialog({ isOpen, onClose }: Props) {
           className="flex items-center justify-between px-5 py-4 border-b"
           style={{ borderColor: 'var(--border)' }}
         >
-          <h2 className="text-base font-medium">{t('settings.title')}</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight">{t('settings.title')}</h2>
           <button
             onClick={onClose}
             className="flex items-center justify-center w-6 h-6 rounded transition-colors"

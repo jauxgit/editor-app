@@ -141,13 +141,14 @@ export function FormatToolbar({ view, top, left, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="fixed z-[100] flex items-center gap-0.5 px-1.5 py-1 rounded-lg border shadow-lg transition-all duration-150"
+      className="fixed z-[100] flex items-center gap-0.5 px-1.5 py-1 rounded-xl border transition-all duration-150"
       style={{
-        top: Math.max(top - 40, 4),
+        top: Math.max(top - 44, 4),
         left: adjustedLeft,
-        background: 'var(--bg-elevated, #2f2a24)',
-        borderColor: 'var(--border, #3d3730)',
-        transform: visible ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(-4px)',
+        background: 'var(--bg-elevated)',
+        borderColor: 'var(--border)',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.1)',
+        transform: visible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(-4px)',
         opacity: visible ? 1 : 0,
         transformOrigin: 'bottom left',
       }}
@@ -157,11 +158,11 @@ export function FormatToolbar({ view, top, left, onClose }: Props) {
           key={btn.label}
           title={btn.title}
           onMouseDown={(e) => { e.preventDefault(); btn.action(view); onClose() }}
-          className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors duration-75"
+          className="flex items-center justify-center w-7 h-7 rounded-md text-xs font-medium transition-colors duration-75"
           style={{ color: 'var(--text-secondary)' }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--accent-muted)';
-            e.currentTarget.style.color = 'var(--accent)';
+            e.currentTarget.style.background = 'var(--accent)';
+            e.currentTarget.style.color = 'var(--accent-contrast)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent';
