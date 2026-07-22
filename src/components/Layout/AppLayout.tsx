@@ -487,16 +487,22 @@ const wordCount = useMemo(() => {
 
         {/* ===== Toolbar ===== */}
         <div
-          className="flex items-center h-9 px-3 gap-2 border-b shrink-0 select-none"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}
+          className="flex items-center h-10 px-3 gap-3 border-b shrink-0 select-none"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-app)' }}
         >
           {/* Toggle file tree */}
           <button
             onClick={toggleFileTree}
-            className="flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-xs transition-all duration-150"
             style={{ color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
             title={t('toolbar.toggleFileTree')}
           >
             <svg
@@ -524,66 +530,37 @@ const wordCount = useMemo(() => {
             </svg>
           </button>
 
-          <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-
           {/* View mode segmented control */}
           <div
-            className="flex rounded-md overflow-hidden"
+            className="flex rounded-lg overflow-hidden p-0.5"
             style={{ border: '1px solid var(--border)', background: 'var(--bg-base)' }}
           >
             {(['source', 'preview', 'split'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs transition-all duration-150"
+                className="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-all duration-150"
                 style={{
-                  color: viewMode === mode ? 'var(--accent)' : 'var(--text-dim)',
-                  background: viewMode === mode ? 'var(--accent-muted)' : 'transparent',
-                  fontWeight: viewMode === mode ? 500 : 400,
+                  color: viewMode === mode ? 'var(--accent-contrast)' : 'var(--text-dim)',
+                  background: viewMode === mode ? 'var(--accent)' : 'transparent',
+                  fontWeight: viewMode === mode ? 600 : 500,
                 }}
               >
                 {mode === 'source' && (
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="4,5 1,8 4,11" />
                     <polyline points="12,5 15,8 12,11" />
                     <line x1="9" y1="4" x2="7" y2="12" />
                   </svg>
                 )}
                 {mode === 'preview' && (
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="12" height="10" rx="1.5" />
                     <circle cx="8" cy="8" r="2" />
                   </svg>
                 )}
                 {mode === 'split' && (
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="5.5" height="10" rx="1" />
                     <rect x="8.5" y="3" width="5.5" height="10" rx="1" />
                   </svg>
@@ -593,64 +570,56 @@ const wordCount = useMemo(() => {
             ))}
           </div>
 
-          <div className="w-px h-4" style={{ borderColor: 'var(--border)' }} />
-
           {/* Workspace path */}
-          <span className="text-xs truncate" style={{ color: 'var(--text-dim)' }}>
+          <span className="micro-label truncate normal-case tracking-normal" style={{ color: 'var(--text-dim)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.02em', textTransform: 'none' }}>
             {root || t('toolbar.noFolderOpen')}
           </span>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5">
             {/* Global Search toggle */}
             <button
               onClick={() => setShowSearchPanel((v) => !v)}
-              className="relative flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+              className="relative flex items-center justify-center w-7 h-7 rounded-md text-xs transition-all duration-150"
               style={{
                 color: showSearchPanel ? 'var(--accent)' : 'var(--text-secondary)',
                 background: showSearchPanel ? 'var(--accent-muted)' : 'transparent',
               }}
               onMouseEnter={(e) => {
-                if (!showSearchPanel) e.currentTarget.style.background = 'var(--bg-hover)';
+                if (!showSearchPanel) {
+                  e.currentTarget.style.background = 'var(--bg-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }
               }}
               onMouseLeave={(e) => {
-                if (!showSearchPanel) e.currentTarget.style.background = 'transparent';
+                if (!showSearchPanel) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
               }}
               title={t('search.title')}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                 <circle cx="7" cy="7" r="4" />
                 <line x1="10" y1="10" x2="14" y2="14" />
               </svg>
             </button>
 
-            {/* Git Changes toggle */}
             {/* Theme toggle — cycles through available themes */}
             <button
               onClick={cycleTheme}
-              className="flex items-center justify-center w-7 h-7 rounded text-xs transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-md text-xs transition-all duration-150"
               style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
               title={`${themeDef.name} — click to cycle`}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke={themeDef.iconColor}
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={themeDef.iconColor} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d={themeDef.iconPath} />
               </svg>
             </button>
@@ -733,11 +702,11 @@ const wordCount = useMemo(() => {
 
           {/* Editor area */}
           <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--bg-base)' }}>
-            {/* Tab bar */}
+            {/* Tab bar —— 卡片页签：活动页签亮起于 bg-elevated，像从内容里长出来 */}
             {tabs.length > 0 && (
               <div
-                className="flex items-center h-9 border-b shrink-0 overflow-x-auto"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                className="flex items-end h-10 shrink-0 overflow-x-auto px-2 gap-0.5"
+                style={{ background: 'var(--bg-app)' }}
               >
                 {tabs.map((tab) => {
                   const isActive = tab.path === activeTabPath;
@@ -745,18 +714,23 @@ const wordCount = useMemo(() => {
                     <div
                       key={tab.path}
                       onClick={() => setActiveTab(tab.path)}
-                      className="group relative flex items-center gap-1.5 h-full px-3 text-xs cursor-pointer select-none shrink-0 transition-colors duration-150"
+                      className="group relative flex items-center gap-2 h-9 px-3.5 text-xs cursor-pointer select-none shrink-0 transition-all duration-150 rounded-t-lg"
                       style={{
                         color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        background: isActive ? 'var(--bg-base)' : 'transparent',
-                        borderRight: '1px solid var(--border)',
-                        fontWeight: isActive ? 500 : 400,
+                        background: isActive ? 'var(--bg-elevated)' : 'transparent',
+                        fontWeight: isActive ? 600 : 500,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.background = 'transparent';
                       }}
                     >
-                      {/* Active tab indicator */}
+                      {/* Active tab accent bar */}
                       {isActive && (
                         <span
-                          className="absolute inset-x-0 top-0 h-0.5"
+                          className="absolute inset-x-2 top-0 h-[2px] rounded-full"
                           style={{ background: 'var(--accent)' }}
                         />
                       )}
@@ -773,20 +747,18 @@ const wordCount = useMemo(() => {
                           e.stopPropagation();
                           handleCloseTab(tab);
                         }}
-                        className="flex items-center justify-center w-4 h-4 rounded opacity-0 group-hover:opacity-100 transition-all text-xs leading-none hover:rotate-90"
+                        className="flex items-center justify-center w-4 h-4 rounded opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
                         style={{ color: 'var(--text-dim)' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--accent-muted)';
+                          e.currentTarget.style.color = 'var(--accent)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = 'var(--text-dim)';
+                        }}
                       >
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 10 10"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                        >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                           <line x1="2" y1="2" x2="8" y2="8" />
                           <line x1="8" y1="2" x2="2" y2="8" />
                         </svg>
@@ -798,7 +770,10 @@ const wordCount = useMemo(() => {
             )}
 
             {/* Editor / Preview */}
-            <div className="flex-1 flex overflow-hidden">
+            <div
+              className="flex-1 flex overflow-hidden"
+              style={tabs.length > 0 ? { background: 'var(--bg-elevated)' } : undefined}
+            >
               {activeTab ? (
                 <>
                   {/* Source editor */}
@@ -820,7 +795,7 @@ const wordCount = useMemo(() => {
 
                   {/* Preview panel */}
                   {(viewMode === 'preview' || viewMode === 'split') && (
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0" style={{ background: 'var(--bg-elevated)' }}>
                       <MarkdownPreview
                         content={activeTab?.content || ''}
                         scrollRatio={viewMode === 'split' ? scrollRatio : undefined}
@@ -855,44 +830,40 @@ const wordCount = useMemo(() => {
 
         {/* ===== Status Bar ===== */}
         <div
-          className="flex items-center h-7 px-3 gap-4 text-xs border-t select-none shrink-0"
+          className="flex items-center h-7 px-4 gap-5 select-none shrink-0 border-t"
           style={{
-            background: 'var(--bg-surface)',
+            background: 'var(--bg-app)',
             borderColor: 'var(--border)',
-            color: 'var(--text-secondary)',
+            color: 'var(--text-dim)',
           }}
         >
-          <span className="flex items-center gap-1.5">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              opacity="0.6"
-            >
-              <rect x="2" y="3" width="12" height="10" rx="1" />
-              <line x1="2" y1="8" x2="14" y2="8" />
-              <line x1="8" y1="3" x2="8" y2="13" />
-            </svg>
-            {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
+          <span className="flex items-center gap-2">
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: saveStatus === 'error' ? '#e05050' : saveStatus === 'saving' || saveStatus === 'unsaved' ? 'var(--accent)' : 'var(--text-dim)',
+                opacity: saveStatus === 'error' || saveStatus === 'saving' || saveStatus === 'unsaved' ? 1 : 0.5,
+              }}
+            />
+            <span className="micro-label" style={{ color: 'var(--text-secondary)' }}>
+              {activeTab ? t('status.lines', { n: lineCount }) : t('status.noFile')}
+            </span>
             {activeTab && (
               <>
-                <span className="mx-1.5 opacity-40">·</span>
-                <span>{t('status.words', { n: wordCount.words })}</span>
-                <span className="mx-1.5 opacity-40">·</span>
-                <span>{t('status.chars', { n: wordCount.chars })}</span>
+                <span className="micro-label">{t('status.words', { n: wordCount.words })}</span>
+                <span className="micro-label">{t('status.chars', { n: wordCount.chars })}</span>
               </>
             )}
           </span>
-          <span>{viewModeLabels[viewMode]}</span>
-          <span>{saveStatusLabel}</span>
 
-          <span className="ml-auto">{t('status.utf8')}</span>
-          <span>{t('status.markdown')}</span>
-          <span>{fontSize}px</span>
+          <span className="micro-label">{saveStatusLabel}</span>
+
+          <span className="ml-auto flex items-center gap-5">
+            <span className="micro-label">{viewModeLabels[viewMode]}</span>
+            <span className="micro-label">{t('status.utf8')}</span>
+            <span className="micro-label">{t('status.markdown')}</span>
+            <span className="micro-label" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{fontSize}px</span>
+          </span>
         </div>
       </div>
     </>

@@ -226,12 +226,13 @@ function TreeNode({
   return (
     <>
       <div
-        className="group flex items-center gap-2 pr-3 py-1 cursor-pointer select-none transition-all duration-100"
+        className="group flex items-center gap-2 pr-3 py-[5px] cursor-pointer select-none transition-all duration-100"
         style={{
           paddingLeft: `${paddingLeft}px`,
           background: isActive ? 'var(--accent-muted)' : 'transparent',
-          color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+          color: isActive ? 'var(--accent-ink)' : 'var(--text-secondary)',
           borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+          fontWeight: isActive ? 500 : 400,
         }}
         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)' }}
         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
@@ -422,24 +423,34 @@ export function FileTree() {
 
   useEffect(() => {
     if (!activeTabPath || !root || !window.electronAPI) return
-    const normalizedRoot = root.replace(/\\/g, '/')
+    const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+$/, '')
     const normalizedPath = activeTabPath.replace(/\\/g, '/')
-    if (!normalizedPath.startsWith(normalizedRoot)) return
+    // Require path boundary so root "E:/notes" does not match "E:/notes2/..."
+    const underRoot =
+      normalizedPath === normalizedRoot ||
+      normalizedPath.toLowerCase().startsWith(normalizedRoot.toLowerCase() + '/')
+    if (!underRoot) return
 
     const relative = normalizedPath.slice(normalizedRoot.length).replace(/^\//, '')
     const parts = relative.split('/').filter(Boolean)
     if (parts.length <= 1) return
 
+    // Prefer native separator from listDir entries so childrenMap keys match.
+    const sep = root.includes('\\') && !root.includes('/') ? '\\' : '/'
     const dirs: string[] = []
     let current = root.replace(/[\\/]$/, '')
     for (const part of parts.slice(0, -1)) {
-      current = current + '/' + part
+      current = current + sep + part
       dirs.push(current)
     }
 
     setExpandedDirs(prev => new Set([...prev, ...dirs]))
     dirs.forEach(async (dir) => {
-      if (childrenMap[dir]) return
+      // childrenMap may key by either separator; check normalized
+      const already = Object.keys(childrenMap).some(
+        (k) => k.replace(/\\/g, '/') === dir.replace(/\\/g, '/'),
+      )
+      if (already) return
       try {
         const children = await window.electronAPI!.listDir(dir)
         setChildrenMap(prev => ({ ...prev, [dir]: prev[dir] || children }))
@@ -569,8 +580,8 @@ export function FileTree() {
 
   return (
     <div className="h-full min-h-0 flex flex-col text-sm" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
-      <div className="flex items-center justify-between px-4 py-2.5 border-b select-none shrink-0" style={{ borderColor: 'var(--border)' }}>
-        <span className="font-medium text-xs uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b select-none shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <span className="micro-label">
           {t('fileTree.title')}
         </span>
         <div className="flex items-center gap-1">

@@ -13,23 +13,29 @@ import { tags as t } from '@lezer/highlight'
  */
 export const warmEditorTheme = EditorView.theme({
   '&': {
-    backgroundColor: 'var(--bg-base)',
+    backgroundColor: 'var(--bg-elevated)',
     color: 'var(--text-primary)',
     fontSize: '14.5px',
     fontFamily: 'var(--font-mono)',
   },
+  '.cm-content': {
+    padding: '8px 0',
+    caretColor: 'var(--accent)',
+  },
   '.cm-gutters': {
-    backgroundColor: 'var(--bg-surface)',
+    backgroundColor: 'var(--bg-elevated)',
     color: 'var(--text-dim)',
-    borderRight: '1px solid var(--border)',
+    borderRight: '1px solid var(--border-light)',
   },
   '.cm-activeLineGutter': {
-    backgroundColor: 'var(--accent-muted)',
+    backgroundColor: 'transparent',
     color: 'var(--accent)',
+    fontWeight: '600',
   },
   '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 8px 0 4px',
-    fontSize: '12px',
+    padding: '0 12px 0 8px',
+    fontSize: '11.5px',
+    minWidth: '40px',
   },
   '.cm-activeLine': {
     backgroundColor: 'var(--accent-muted)',
@@ -39,61 +45,69 @@ export const warmEditorTheme = EditorView.theme({
     borderLeftWidth: '2px',
   },
   '.cm-selectionBackground': {
-    backgroundColor: 'var(--accent-muted) !important',
+    backgroundColor: 'var(--accent-ring) !important',
   },
   '&.cm-focused .cm-selectionBackground': {
-    backgroundColor: 'var(--accent-muted) !important',
+    backgroundColor: 'var(--accent-ring) !important',
   },
   '.cm-selectionMatch': {
     backgroundColor: 'var(--accent-muted)',
   },
   '.cm-matchingBracket': {
     backgroundColor: 'var(--accent-muted)',
-    outline: '1px solid var(--accent)',
+    outline: '1px solid var(--accent-ring)',
   },
   '.cm-searchMatch': {
     backgroundColor: 'var(--accent-muted)',
-    outline: '1px solid var(--accent)',
+    outline: '1px solid var(--accent-ring)',
   },
   '.cm-searchMatch-selected': {
     backgroundColor: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--accent-contrast)',
   },
   '.cm-tooltip': {
     backgroundColor: 'var(--bg-elevated)',
     border: '1px solid var(--border)',
     color: 'var(--text-primary)',
-    borderRadius: '6px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    borderRadius: '8px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08)',
   },
   '.cm-tooltip-autocomplete': {
     '& > ul': {
-      maxHeight: '200px',
+      maxHeight: '220px',
+      fontFamily: 'var(--font-mono)',
+      fontSize: '13px',
     },
     '& > ul > li': {
-      padding: '4px 8px',
+      padding: '4px 10px',
     },
     '& > ul > li[aria-selected]': {
-      backgroundColor: 'var(--accent-muted)',
-      color: 'var(--accent)',
+      backgroundColor: 'var(--accent)',
+      color: 'var(--accent-contrast)',
     },
+  },
+  '.cm-panels': {
+    backgroundColor: 'transparent',
   },
   '.cm-panel': {
     backgroundColor: 'var(--bg-surface)',
     border: '1px solid var(--border)',
-    borderRadius: '6px',
-    padding: '6px 10px',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
   },
   '.cm-panel input': {
-    backgroundColor: 'var(--bg-base)',
+    backgroundColor: 'var(--bg-elevated)',
     color: 'var(--text-primary)',
     border: '1px solid var(--border)',
-    borderRadius: '4px',
-    padding: '3px 6px',
+    borderRadius: '6px',
+    padding: '4px 8px',
     fontSize: '13px',
+    fontFamily: 'var(--font-ui)',
     outline: 'none',
     '&:focus': {
       borderColor: 'var(--accent)',
+      boxShadow: '0 0 0 2px var(--accent-ring)',
     },
   },
   '.cm-panel label': {
@@ -102,11 +116,12 @@ export const warmEditorTheme = EditorView.theme({
   },
   '.cm-button': {
     backgroundColor: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--accent-contrast)',
     border: 'none',
-    borderRadius: '4px',
-    padding: '3px 10px',
+    borderRadius: '6px',
+    padding: '4px 12px',
     fontSize: '12px',
+    fontWeight: '500',
     cursor: 'pointer',
     '&:hover': {
       backgroundColor: 'var(--accent-hover)',
@@ -114,13 +129,13 @@ export const warmEditorTheme = EditorView.theme({
   },
   '.cm-fat-cursor': {
     backgroundColor: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--accent-contrast)',
   },
   '&.cm-focused .cm-fat-cursor': {
     backgroundColor: 'var(--accent)',
   },
   '.cm-selectionLayer': {
-    backgroundColor: 'var(--accent-muted)',
+    backgroundColor: 'var(--accent-ring)',
   },
 })
 

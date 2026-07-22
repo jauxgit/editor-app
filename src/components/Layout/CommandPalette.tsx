@@ -41,7 +41,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
     }
   }, [isOpen]);
 
-  // 閿洏瀵艰埅
+  // 键盘导航
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -73,20 +73,20 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] transition-opacity duration-200"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] transition-opacity duration-200"
       style={{
-        background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-        // backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        background: visible ? 'rgba(10,8,5,0.5)' : 'rgba(10,8,5,0)',
       }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden transition-all duration-200"
+        className={`w-full max-w-lg rounded-2xl border overflow-hidden transition-all duration-200 ${visible ? 'mark-ping' : ''}`}
         style={{
           background: 'var(--bg-elevated)',
           borderColor: 'var(--border)',
           color: 'var(--text-primary)',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(-12px) scale(0.97)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.12)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(-14px) scale(0.96)',
           opacity: visible ? 1 : 0,
         }}
         onClick={(e) => e.stopPropagation()}
@@ -102,9 +102,9 @@ export function CommandPalette({ isOpen, onClose }: Props) {
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.6"
             strokeLinecap="round"
-            style={{ color: 'var(--accent)', marginRight: 10, flexShrink: 0 }}
+            style={{ color: 'var(--accent)', marginRight: 12, flexShrink: 0 }}
           >
             <line x1="12.5" y1="12.5" x2="15" y2="15" />
             <circle cx="7" cy="7" r="5.5" />
@@ -119,7 +119,7 @@ export function CommandPalette({ isOpen, onClose }: Props) {
             }}
             onKeyDown={handleKeyDown}
             placeholder={t('cmdPalette.placeholder')}
-            className="flex-1 outline-none text-sm bg-transparent"
+            className="flex-1 outline-none text-[15px] bg-transparent"
             style={{ color: 'var(--text-primary)' }}
             spellCheck={false}
           />
@@ -129,20 +129,12 @@ export function CommandPalette({ isOpen, onClose }: Props) {
                 setQuery('');
                 setIndex(0);
               }}
-              className="flex items-center justify-center w-5 h-5 rounded text-xs transition-colors"
+              className="flex items-center justify-center w-5 h-5 rounded-md text-xs transition-colors"
               style={{ color: 'var(--text-dim)' }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                 <line x1="2" y1="2" x2="8" y2="8" />
                 <line x1="8" y1="2" x2="2" y2="8" />
               </svg>
@@ -151,9 +143,9 @@ export function CommandPalette({ isOpen, onClose }: Props) {
         </div>
 
         {/* Results list */}
-        <div className="max-h-72 overflow-y-auto py-1.5">
+        <div className="max-h-80 overflow-y-auto py-1.5">
           {results.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-dim)' }}>
+            <div className="px-4 py-10 text-center text-sm" style={{ color: 'var(--text-dim)' }}>
               {t('cmdPalette.noResults')}
             </div>
           ) : (
@@ -165,19 +157,20 @@ export function CommandPalette({ isOpen, onClose }: Props) {
                   onClose();
                 }}
                 onMouseEnter={() => setIndex(i)}
-                className="flex items-center justify-between px-4 py-2 cursor-pointer text-sm transition-colors duration-75"
+                className="flex items-center justify-between px-4 py-2 cursor-pointer text-[13px] transition-colors duration-75"
                 style={{
-                  background: i === index ? 'var(--accent-muted)' : 'transparent',
-                  color: i === index ? 'var(--accent)' : 'var(--text-primary)',
+                  background: i === index ? 'var(--accent)' : 'transparent',
+                  color: i === index ? 'var(--accent-contrast)' : 'var(--text-primary)',
+                  fontWeight: i === index ? 500 : 400,
                 }}
               >
                 <span>{cmd.label}</span>
                 {cmd.category && (
                   <span
-                    className="text-xs ml-4 shrink-0"
+                    className="micro-label ml-4 shrink-0"
                     style={{
-                      color: i === index ? 'var(--accent)' : 'var(--text-dim)',
-                      opacity: i === index ? 0.8 : 1,
+                      color: i === index ? 'var(--accent-contrast)' : 'var(--text-dim)',
+                      opacity: i === index ? 0.85 : 1,
                     }}
                   >
                     {cmd.category}
@@ -190,39 +183,30 @@ export function CommandPalette({ isOpen, onClose }: Props) {
 
         {/* Footer hints */}
         <div
-          className="flex items-center gap-4 px-4 py-2 border-t text-xs"
+          className="flex items-center gap-4 px-4 py-2.5 border-t"
           style={{
             borderColor: 'var(--border)',
             color: 'var(--text-dim)',
             background: 'var(--bg-surface)',
           }}
         >
-          <span className="flex items-center gap-1">
-            <kbd
-              className="px-1 py-0.5 rounded text-[10px]"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-            >
-              鈫戔啌
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+              ↑↓
             </kbd>
-            {t('cmdPalette.navigate')}
+            <span className="micro-label">{t('cmdPalette.navigate')}</span>
           </span>
-          <span className="flex items-center gap-1">
-            <kbd
-              className="px-1 py-0.5 rounded text-[10px]"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-            >
-              鈫?
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+              ↵
             </kbd>
-            {t('cmdPalette.execute')}
+            <span className="micro-label">{t('cmdPalette.execute')}</span>
           </span>
-          <span className="flex items-center gap-1">
-            <kbd
-              className="px-1 py-0.5 rounded text-[10px]"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-            >
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
               Esc
             </kbd>
-            {t('cmdPalette.close')}
+            <span className="micro-label">{t('cmdPalette.close')}</span>
           </span>
         </div>
       </div>

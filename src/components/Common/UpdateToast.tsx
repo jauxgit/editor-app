@@ -71,7 +71,7 @@ export function UpdateToast() {
                   <button
                     onClick={() => void startDownload()}
                     className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-                    style={{ background: 'var(--accent)', color: '#fff' }}
+                    style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}
                   >
@@ -120,7 +120,7 @@ export function UpdateToast() {
                   <button
                     onClick={() => void installAndRestart()}
                     className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-                    style={{ background: 'var(--accent)', color: '#fff' }}
+                    style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}
                   >
@@ -147,7 +147,7 @@ export function UpdateToast() {
                   <button
                     onClick={() => void checkForUpdates({ silent: false })}
                     className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-                    style={{ background: 'var(--accent)', color: '#fff' }}
+                    style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
                   >
                     {t('about.checkUpdate')}
                   </button>
