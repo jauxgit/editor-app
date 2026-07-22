@@ -99,14 +99,16 @@ export function AppLayout() {
   // 注册命令面板命令
   useRegisterCommands();
 
-  // 启动时检查是否有启动参数（从 Explorer 双击打开），否则恢复上次记录
+  // 启动参数 / 恢复上次工作区：等首帧绘制后再跑，避免挡住 Home/骨架屏
   useEffect(() => {
-    const store = useEditorStore.getState();
-    const ws = useWorkspaceStore.getState();
+    let cancelled = false;
+    const run = async () => {
+      const store = useEditorStore.getState();
+      const ws = useWorkspaceStore.getState();
 
-    (async () => {
       // 优先处理启动参数（从 Explorer 双击打开的文件/文件夹）
       const args = window.electronAPI ? await window.electronAPI.getStartupArgs() : [];
+      if (cancelled) return;
       if (args.length > 0) {
         for (const arg of args) {
           if (arg.type === 'file') {
@@ -118,7 +120,7 @@ export function AppLayout() {
         return;
       }
 
-      // 无启动参数时恢复上次记录
+      // 无启动参数时恢复上次记录（setRoot 会触发 FileTree listDir，放在首帧后）
       if (store.lastRootPath) {
         ws.setRoot(store.lastRootPath);
       }
@@ -128,13 +130,26 @@ export function AppLayout() {
         window.electronAPI
           .readFile(lastPath)
           .then(({ content }) => {
-            ws.openFile(lastPath, content);
+            if (!cancelled) ws.openFile(lastPath, content);
           })
           .catch(() => {
             useEditorStore.getState().setLastFilePath(null);
           });
       }
-    })();
+    };
+
+    // rAF 双帧 ≈ 等 React 提交 DOM 后再做 IPC/磁盘，缩短「白窗」体感
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        void run();
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
   }, []);
 
   // 全局快捷键（绕过 CodeMirror 的按键拦截）

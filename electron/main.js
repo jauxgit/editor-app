@@ -162,11 +162,17 @@ function createWindow() {
     minHeight: 500,
     title: 'MarkEdit · 码记',
     icon: join(electronDir, '..', 'build', 'icon.png'),
+    // 避免部分机器上「先出白窗再等渲染」：等 ready-to-show 再 show
+    show: false,
+    // 与默认主题 Ember / warm-light 的 --bg-app 一致，减少闪白
+    backgroundColor: '#e6dfd2',
     webPreferences: {
       preload: join(electronDir, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
+      // 首屏不依赖后台节流；部分机器最小化后再开会感觉「卡住」
+      backgroundThrottling: false,
     },
   };
 
@@ -181,10 +187,22 @@ function createWindow() {
 
   const win = new BrowserWindow(winOptions);
 
+  // 首帧可绘制后再显示，避免空白等待态
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.show();
+  });
+  // 兜底：极少数环境下 ready-to-show 不触发时仍能显示
+  win.webContents.once('did-fail-load', (_e, _code, _desc, validatedURL) => {
+    console.error('[main] did-fail-load', validatedURL);
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  });
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  }, 8000);
+
   if (isDev) {
     win.loadURL('http://localhost:5173');
-    win.webContents.openDevTools();
-    // DevTools 快捷键（菜单被置空后默认快捷键失效）
+    // 不在启动时自动开 DevTools（拖慢首屏）；仍可用 F12 / Ctrl+Shift+I
     win.webContents.on('before-input-event', (_e, input) => {
       if (
         input.key === 'F12' ||

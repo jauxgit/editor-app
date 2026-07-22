@@ -4,13 +4,79 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' markedit: 'unsafe-inline' 'unsafe-eval' ws: http://localhost:* https:; img-src 'self' markedit: file: data: blob: https:; connect-src 'self' markedit: ws: http://localhost:* https://api.github.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+    <!-- 首屏不阻塞：系统字体先画 UI；Google Fonts 异步加载（弱网/墙内不拖死启动） -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Cascadia+Code:wght@400;600&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Cascadia+Code:wght@400;600&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      />
+    </noscript>
+    <style>
+      /* 与 BrowserWindow.backgroundColor / 默认主题一致，JS 挂载前也不闪白 */
+      html, body, #root {
+        margin: 0;
+        height: 100%;
+        background: #e6dfd2;
+        color: #221e18;
+      }
+      /* 极简启动占位：React 就绪后 #root 被替换，占位自然消失 */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        background: #e6dfd2;
+        font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        color: #6d6455;
+        z-index: 0;
+        pointer-events: none;
+      }
+      #boot-splash .mark {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #221e18;
+      }
+      #boot-splash .bar {
+        width: 96px;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(194, 72, 15, 0.18);
+        overflow: hidden;
+      }
+      #boot-splash .bar > i {
+        display: block;
+        height: 100%;
+        width: 40%;
+        background: #c2480f;
+        border-radius: 2px;
+        animation: boot-slide 1.1s ease-in-out infinite;
+      }
+      @keyframes boot-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(280%); }
+      }
+    </style>
     <title>MarkEdit · 码记</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash" aria-hidden="true">
+        <div class="mark">MarkEdit · 码记</div>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
