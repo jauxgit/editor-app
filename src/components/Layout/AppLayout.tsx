@@ -827,16 +827,16 @@ const wordCount = useMemo(() => {
             </div>
           </div>
 
-          {/* Search Panel (right side) */}
+          {/* Search Panel (right side) — min-h-0 so child overflow-y can scroll */}
           <div
-            className="shrink-0 border-l overflow-hidden"
+            className="shrink-0 self-stretch min-h-0 border-l overflow-hidden"
             style={{
               width: showSearchPanel ? '280px' : '0px',
               borderColor: 'var(--border)',
               transition: 'width 0.2s ease',
             }}
           >
-            <div className="w-[280px] h-full">
+            <div className="w-[280px] h-full min-h-0 flex flex-col">
               <SearchPanel onClose={() => setShowSearchPanel(false)} />
             </div>
           </div>
