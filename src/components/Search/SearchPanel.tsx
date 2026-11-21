@@ -49,19 +49,34 @@ export function SearchPanel({ onClose }: Props) {
     debounceRef.current = setTimeout(() => doSearch(value), 300)
   }, [doSearch])
 
-  // 点击结果打开文件
+  // 点击结果：在当前工作区内打开，禁止改 root（避免树塌成文件父目录）
   const handleResultClick = useCallback(async (result: SearchResult) => {
     try {
-      if (window.electronAPI) {
-        const data = await window.electronAPI.readFile(result.path)
-        openFile(data.path, data.content)
-        // 跳转到具体行号（在文件打开后触发）
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('editor:goto-line', {
-            detail: { line: result.line },
-          }))
-        }, 100)
+      if (!window.electronAPI) return
+      const data = await window.electronAPI.readFile(result.path)
+      const openPath = result.path || data.path
+
+      // 1) Files tab must be active (FileTree unmounts on Outline)
+      window.dispatchEvent(new CustomEvent('sidebar:show-files'))
+
+      // 2) Open file without re-rooting workspace
+      openFile(openPath, data.content, { allowRootChange: false })
+
+      // 3) Reveal ancestors after FileTree has mounted / received state.
+      // Staggered retries cover: tab switch remount, root listDir still loading.
+      const reveal = () => {
+        window.dispatchEvent(new CustomEvent('filetree:reveal', { detail: { path: openPath } }))
       }
+      requestAnimationFrame(reveal)
+      setTimeout(reveal, 50)
+      setTimeout(reveal, 200)
+      setTimeout(reveal, 400)
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('editor:goto-line', {
+          detail: { line: result.line },
+        }))
+      }, 100)
     } catch {
       // 文件可能已被删除
     }

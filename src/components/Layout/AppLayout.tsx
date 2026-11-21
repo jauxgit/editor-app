@@ -408,6 +408,13 @@ export function AppLayout() {
     });
   }, [openFile, setRoot]);
 
+  // Search / other panels may request the Files sidebar tab so FileTree is mounted
+  useEffect(() => {
+    const showFiles = () => setSidebarTab('files');
+    window.addEventListener('sidebar:show-files', showFiles);
+    return () => window.removeEventListener('sidebar:show-files', showFiles);
+  }, []);
+
   const lineCount = activeTab?.content?.split('\n').length || 0;
 
 // 字数统计：统计中文字符 + 英文单词
