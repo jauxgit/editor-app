@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { editorThemes, getTheme } from '../../lib/editorThemes';
 import { useT } from '../../lib/i18n';
-import { closeTabWithConfirm, createNewDocument, openFileFromDialog, openFolderFromDialog } from '../../lib/workspaceActions';
+import { closeTabWithConfirm, confirmCloseAllTabs, createNewDocument, openFileFromDialog, openFolderFromDialog } from '../../lib/workspaceActions';
 import { useEditorStore } from '../../stores/editorStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { TabInfo } from '../../stores/workspaceStore';
@@ -407,6 +407,21 @@ export function AppLayout() {
       // 在 EditorWrapper 中处理
     });
   }, [openFile, setRoot]);
+
+  // 关闭窗口前逐个确认脏标签；任一取消或保存失败都中止关闭
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    let running = false;
+    window.electronAPI.onBeforeClose(async () => {
+      if (running) return false;
+      running = true;
+      try {
+        return await confirmCloseAllTabs();
+      } finally {
+        running = false;
+      }
+    });
+  }, []);
 
   // Search / other panels may request the Files sidebar tab so FileTree is mounted
   useEffect(() => {

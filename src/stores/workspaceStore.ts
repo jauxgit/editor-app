@@ -129,6 +129,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // ("重新开一个窗口/标签") for the same file.
     const existing = tabs.find(t => normalizePath(t.path) === normalizePath(path))
     if (existing) {
+      // 已有标签只激活，绝不用磁盘内容覆盖缓冲区：重复打开（文件树双击、
+      // 搜索结果、最近文件、系统打开）不能吞掉未保存的编辑。
+      if (existing.isDirty) {
+        set({ activeTabPath: existing.path })
+        return
+      }
       // Keep the existing tab's path string as the stable key (avoids EditorView remount + tree key thrash)
       const stablePath = existing.path
       set({

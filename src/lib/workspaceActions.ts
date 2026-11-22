@@ -242,39 +242,47 @@ export async function saveActiveTab(): Promise<boolean> {
   return (await saveTab(tab)) !== null
 }
 
-export async function closeTabWithConfirm(tab: TabInfo): Promise<boolean> {
-  const store = useWorkspaceStore.getState()
-  const current = flushEditorContentToTab(tab)
-  if (!current.isDirty) {
-    store.closeTab(current.path)
-    return true
-  }
+let closeTabPending = false
 
-  if (window.electronAPI) {
-    const action = await window.electronAPI.confirmUnsaved(
-      t('confirm.unsavedMessage', { name: current.name }),
-      t('confirm.unsavedTitle'),
-    )
-    if (action === 'save') {
-      const savedPath = await saveTab(current)
-      if (savedPath) {
-        useWorkspaceStore.getState().closeTab(savedPath)
+export async function closeTabWithConfirm(tab: TabInfo): Promise<boolean> {
+  if (closeTabPending) return false
+  closeTabPending = true
+  try {
+    const store = useWorkspaceStore.getState()
+    const current = flushEditorContentToTab(tab)
+    if (!current.isDirty) {
+      store.closeTab(current.path)
+      return true
+    }
+
+    if (window.electronAPI) {
+      const action = await window.electronAPI.confirmUnsaved(
+        t('confirm.unsavedMessage', { name: current.name }),
+        t('confirm.unsavedTitle'),
+      )
+      if (action === 'save') {
+        const savedPath = await saveTab(current)
+        if (savedPath) {
+          useWorkspaceStore.getState().closeTab(savedPath)
+          return true
+        }
+        return false
+      }
+      if (action === 'discard') {
+        store.closeTab(current.path)
         return true
       }
       return false
     }
-    if (action === 'discard') {
+
+    if (window.confirm(t('confirm.unsavedMessage', { name: current.name }))) {
       store.closeTab(current.path)
       return true
     }
     return false
+  } finally {
+    closeTabPending = false
   }
-
-  if (window.confirm(t('confirm.unsavedMessage', { name: current.name }))) {
-    store.closeTab(current.path)
-    return true
-  }
-  return false
 }
 
 export async function closeActiveTab(): Promise<boolean> {
@@ -282,6 +290,32 @@ export async function closeActiveTab(): Promise<boolean> {
   const tab = store.openTabs.find((item) => item.path === store.activeTabPath)
   if (!tab) return false
   return closeTabWithConfirm(tab)
+}
+
+/**
+ * 窗口关闭前统一确认：先 flush 活动标签，再逐个处理脏标签。
+ * 不在此处关闭标签——全部确认通过后由主进程直接销毁窗口，
+ * 避免边关边切标签导致 flush 读到上一个标签的 EditorView。
+ */
+export async function confirmCloseAllTabs(): Promise<boolean> {
+  const store = useWorkspaceStore.getState()
+  const active = store.openTabs.find((item) => item.path === store.activeTabPath)
+  if (active) flushEditorContentToTab(active)
+
+  for (const tab of [...useWorkspaceStore.getState().openTabs]) {
+    if (!tab.isDirty) continue
+    if (window.electronAPI) {
+      const action = await window.electronAPI.confirmUnsaved(
+        t('confirm.unsavedMessage', { name: tab.name }),
+        t('confirm.unsavedTitle'),
+      )
+      if (action === 'cancel') return false
+      if (action === 'save' && !(await saveTab(tab))) return false
+    } else if (!window.confirm(t('confirm.unsavedMessage', { name: tab.name }))) {
+      return false
+    }
+  }
+  return true
 }
 
 export function activateNextTab(direction: 1 | -1): boolean {

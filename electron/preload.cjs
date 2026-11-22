@@ -1,5 +1,22 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+let beforeCloseHandler = null
+
+ipcRenderer.on('app:beforeClose', async () => {
+  let allow = true
+  if (beforeCloseHandler) {
+    try {
+      allow = (await beforeCloseHandler()) !== false
+    } catch (err) {
+      console.error('[preload] beforeClose handler failed', err)
+      allow = false
+    }
+  }
+  ipcRenderer.invoke('window:confirmClose', allow).catch((err) => {
+    console.error('[preload] window:confirmClose failed', err)
+  })
+})
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 文件操作 =====
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
@@ -34,6 +51,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onMenuSave: (callback) => {
     ipcRenderer.on('menu:save', () => callback())
+  },
+  onBeforeClose: (callback) => {
+    beforeCloseHandler = callback
   },
 
   // ===== 系统 =====
