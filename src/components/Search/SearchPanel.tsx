@@ -49,19 +49,34 @@ export function SearchPanel({ onClose }: Props) {
     debounceRef.current = setTimeout(() => doSearch(value), 300)
   }, [doSearch])
 
-  // 点击结果打开文件
+  // 点击结果：在当前工作区内打开，禁止改 root（避免树塌成文件父目录）
   const handleResultClick = useCallback(async (result: SearchResult) => {
     try {
-      if (window.electronAPI) {
-        const data = await window.electronAPI.readFile(result.path)
-        openFile(data.path, data.content)
-        // 跳转到具体行号（在文件打开后触发）
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('editor:goto-line', {
-            detail: { line: result.line },
-          }))
-        }, 100)
+      if (!window.electronAPI) return
+      const data = await window.electronAPI.readFile(result.path)
+      const openPath = result.path || data.path
+
+      // 1) Files tab must be active (FileTree unmounts on Outline)
+      window.dispatchEvent(new CustomEvent('sidebar:show-files'))
+
+      // 2) Open file without re-rooting workspace
+      openFile(openPath, data.content, { allowRootChange: false })
+
+      // 3) Reveal ancestors after FileTree has mounted / received state.
+      // Staggered retries cover: tab switch remount, root listDir still loading.
+      const reveal = () => {
+        window.dispatchEvent(new CustomEvent('filetree:reveal', { detail: { path: openPath } }))
       }
+      requestAnimationFrame(reveal)
+      setTimeout(reveal, 50)
+      setTimeout(reveal, 200)
+      setTimeout(reveal, 400)
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('editor:goto-line', {
+          detail: { line: result.line },
+        }))
+      }, 100)
     } catch {
       // 文件可能已被删除
     }
@@ -69,9 +84,8 @@ export function SearchPanel({ onClose }: Props) {
 
   return (
     <div
-      className="shrink-0 border-l overflow-hidden flex flex-col"
+      className="h-full min-h-0 w-full border-l overflow-hidden flex flex-col"
       style={{
-        width: '280px',
         borderColor: 'var(--border)',
         background: 'var(--bg-surface)',
         color: 'var(--text-secondary)',
@@ -115,7 +129,7 @@ export function SearchPanel({ onClose }: Props) {
       </div>
 
       {/* Search input */}
-      <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
+      <div className="px-3 py-2.5 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
         <div
           className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors"
           style={{
@@ -167,8 +181,11 @@ export function SearchPanel({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto py-0.5">
+      {/* Results — min-h-0 is required so flex-1 can shrink and overflow-y scrolls */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain py-0.5"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {!root ? (
           <div className="px-4 py-10 text-center text-xs" style={{ color: 'var(--text-dim)' }}>
             <svg
@@ -201,11 +218,11 @@ export function SearchPanel({ onClose }: Props) {
             <div>{t('search.noResults')}</div>
           </div>
         ) : (
-          <div>
+          <div className="min-w-0">
             {results.length > 0 && (
               <div
-                className="px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider shrink-0"
-                style={{ color: 'var(--text-dim)' }}
+                className="px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider sticky top-0 z-[1]"
+                style={{ color: 'var(--text-dim)', background: 'var(--bg-surface)' }}
               >
                 {t('search.resultsCount', { n: results.length })}
               </div>
@@ -217,8 +234,8 @@ export function SearchPanel({ onClose }: Props) {
               const dirPath = pathParts.join('/')
               return (
                 <div
-                  key={i}
-                  className="group flex flex-col gap-0.5 px-4 py-1.5 cursor-pointer select-none transition-all duration-100 text-xs"
+                  key={`${result.path}:${result.line}:${i}`}
+                  className="group flex flex-col gap-0.5 px-4 py-1.5 cursor-pointer select-none transition-all duration-100 text-xs min-w-0"
                   style={{ color: 'var(--text-secondary)' }}
                   onClick={() => handleResultClick(result)}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
@@ -229,12 +246,12 @@ export function SearchPanel({ onClose }: Props) {
                       style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                       {result.line}
                     </span>
-                    <span className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <span className="truncate font-medium min-w-0" style={{ color: 'var(--text-primary)' }}>
                       {fileName}
                     </span>
                   </div>
-                  <div className="truncate pl-7 text-[11px]" style={{ color: 'var(--text-dim)' }}>
-                    <span>{dirPath}</span>
+                  <div className="truncate pl-7 text-[11px] min-w-0" style={{ color: 'var(--text-dim)' }} title={result.content}>
+                    <span className="truncate">{dirPath}</span>
                     <span className="mx-1 opacity-40">/</span>
                     <span className="font-mono">{result.content.slice(0, 120)}</span>
                   </div>

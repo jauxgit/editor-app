@@ -22,7 +22,7 @@ import {
   unlink,
   writeFile,
 } from 'node:fs/promises';
-import { dirname, extname, join } from 'node:path';
+import { dirname, extname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Work around Chromium GPU process crashes on some Windows dev environments.
@@ -104,6 +104,12 @@ const pluginsDir = isDev
   ? join(dirname(dirname(fileURLToPath(import.meta.url))), 'plugins')
   : join(dirname(process.execPath), 'plugins');
 
+// 判断 child 是否真的位于 parent 目录内（避免 plugins-evil 这类同前缀目录绕过）
+function isPathInside(parent, child) {
+  const rel = relative(parent, child);
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
 // ===== 自定义协议：serve dist 文件 + 插件文件 =====
 function registerCustomProtocol() {
   protocol.handle('markedit', async (request) => {
@@ -114,13 +120,16 @@ function registerCustomProtocol() {
     if (url.host === 'plugins') {
       // 安全校验：只允许 plugins 目录下的文件
       const pluginFilePath = join(pluginsDir, url.pathname);
-      if (!pluginFilePath.startsWith(pluginsDir)) {
+      if (!isPathInside(pluginsDir, pluginFilePath)) {
         return new Response('Forbidden', { status: 403 });
       }
       filePath = pluginFilePath;
     } else {
       // 普通 dist 文件
       filePath = join(distDir, url.pathname === '/' ? '/index.html' : url.pathname);
+      if (!isPathInside(distDir, filePath)) {
+        return new Response('Forbidden', { status: 403 });
+      }
     }
 
     try {
@@ -219,9 +228,26 @@ function createWindow() {
 
   // ===== 外部链接处理：强制使用系统默认浏览器打开 =====
   const handleExternalNav = (url) => {
-    const internalPrefixes = ['http://localhost:5173', 'markedit://', 'file://'];
-    if (internalPrefixes.some((p) => url.startsWith(p))) return false;
-    shell.openExternal(url);
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return true;
+    }
+    // 必须用解析后的 origin 精确比对：startsWith 会被
+    // http://localhost:5173@evil.com 这类 URL 绕过（真实 host 是 evil.com）
+    // 只允许精确的应用入口：//evil.com/ 会以 markedit:///index.html 为基准
+    // 解析成 markedit://evil.com/，不能因为协议是 markedit: 就放行
+    if (parsed.protocol === 'markedit:') {
+      return !(
+        parsed.host === '' &&
+        (parsed.pathname === '/index.html' || parsed.pathname === '/')
+      );
+    }
+    if (isDev && parsed.origin === 'http://localhost:5173') return false;
+    if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+      shell.openExternal(url);
+    }
     return true;
   };
 
@@ -234,8 +260,17 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // 窗口关闭时清理所有 git 子进程
-  win.on('close', () => {});
+  // 关闭前交给渲染进程确认未保存文档；确认后置 __allowClose 再真正关闭。
+  win.on('close', (event) => {
+    if (win.__allowClose) return;
+    // 页面尚未就绪时无人处理确认请求，直接放行避免关不掉
+    if (win.webContents.isDestroyed() || win.webContents.isLoading()) {
+      win.__allowClose = true;
+      return;
+    }
+    event.preventDefault();
+    win.webContents.send('app:beforeClose');
+  });
 
   return win;
 }
@@ -391,8 +426,9 @@ ipcMain.handle('dialog:confirm', async (_e, message, title) => {
 });
 
 // 未保存更改确认对话框（保存 / 不保存 / 取消）
-ipcMain.handle('dialog:confirmUnsaved', async (_e, message, title) => {
-  const win = BrowserWindow.getFocusedWindow();
+ipcMain.handle('dialog:confirmUnsaved', async (event, message, title) => {
+  const win =
+    BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
   if (!win) return 'cancel';
   const result = await dialog.showMessageBox(win, {
     type: 'warning',
@@ -692,9 +728,18 @@ ipcMain.handle('window:maximize', () => {
   }
 });
 
-ipcMain.handle('window:close', () => {
-  const win = BrowserWindow.getFocusedWindow();
+ipcMain.handle('window:close', (event) => {
+  const win =
+    BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
   if (win) win.close();
+});
+
+// 渲染进程确认关闭结果：allow=false 时保持窗口（用户取消或保存失败）
+ipcMain.handle('window:confirmClose', (event, allow) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || !allow) return;
+  win.__allowClose = true;
+  win.close();
 });
 
 ipcMain.handle('window:isMaximized', () => {
@@ -812,6 +857,11 @@ ipcMain.handle('update:installAndRestart', async (_e, installerPath) => {
     }
 
     child.unref();
+
+    // 安装流程不再询问未保存文档（用户已确认更新），放行关闭拦截
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.__allowClose = true;
+    });
 
     // Give the installer a moment to start, then quit so files can be replaced
     setTimeout(() => {

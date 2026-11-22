@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getActiveEditorView } from '../../lib/commands';
 import { useT } from '../../lib/i18n';
 import {
+  closeActiveTab,
   createNewDocument,
   openFileFromDialog,
   openFolderFromDialog,
   saveActiveTab,
 } from '../../lib/workspaceActions';
 import { useEditorStore } from '../../stores/editorStore';
-import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface MenuItem {
   id: string;
@@ -41,9 +41,6 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
   const setViewMode = useEditorStore((s) => s.setViewMode);
   const toggleFileTree = useEditorStore((s) => s.toggleFileTree);
   const cycleTheme = useEditorStore((s) => s.cycleTheme);
-  const closeTab = useWorkspaceStore((s) => s.closeTab);
-  const activeTabPath = useWorkspaceStore((s) => s.activeTabPath);
-
   // 窗口最大化状态监听
   useEffect(() => {
     if (!window.electronAPI) return;
@@ -205,7 +202,7 @@ export function TitleBar({ onOpenPalette, onOpenPluginManager }: Props) {
           label: t('menu.closeTab'),
           shortcut: 'Ctrl+W',
           action: () => {
-            if (activeTabPath) closeTab(activeTabPath);
+            void closeActiveTab();
           },
         },
         { id: 'sep2', divider: true, label: '' },

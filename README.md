@@ -14,7 +14,7 @@
 - **多光标编辑**：Cmd+D 选词、Alt+↑↓ 添加上/下游标、列选择模式
 - **Markdown 语法高亮** — 实时编辑区高亮 + 预览区完整渲染
 - **有序列表自动续写** — Enter 自动生成下一序号
-- **13 种代码块语言高亮** + 30+ 种文件扩展名全文高亮
+- **13 种代码块语言高亮** + 32 种文件扩展名全文高亮
 - **Markdown 软换行** — 单 Enter 换行显示（符合笔记习惯）
 - **图片拖入/粘贴** — 自动写入文件系统并内联渲染
 
@@ -28,7 +28,7 @@
 
 ### 界面
 
-- **5 套完整主题**：Warm Light / Warm Dark / Nord / Tokyo Night / Paper，每套含完整 CSS 变量 + 语法高亮色
+- **5 套完整主题**：Ember（焦橙）/ Ember Dark（焦橙暗夜）/ Nordic（北欧冰蓝）/ Tokyo Night（东京之夜）/ Paper Ink（宣纸墨绿），每套含完整 CSS 变量 + 语法高亮色
 - **自定义 CM6 编辑器主题** — 暖色语法高亮，CSS 变量驱动
 - **8 种 highlight.js 预览高亮主题** — 与编辑器主题自动联动
 - **编辑区 ↔ 预览区滚动同步** — 分屏模式下同步滚动
@@ -43,7 +43,7 @@
 - **字数统计** — 状态栏实时显示行数、词数（中文按字计）、字符数
 - **Markdown 格式化工具栏** — 选中文本后弹出浮动工具栏（加粗/斜体/代码/链接/标题/列表/引用/分割线）
 - **自动保存** — 默认开启 2 秒防抖自动写盘，可在设置中关闭
-- **全局搜索** — Cmd+Shift+F 跨文件全文搜索，点击结果跳转到指定行**
+- **全局搜索** — Cmd+Shift+F 跨文件全文搜索，点击结果跳转到指定行
 
 ### 文件系统
 
@@ -51,7 +51,7 @@
 - **拖拽文件/文件夹**到 exe 冷/热启动
 - **单实例锁** — 防重复启动，拖到 exe 的文件路由到已有窗口
 - **启动记忆** — 恢复左侧目录 + 最近打开的文件
-- **新建文件**（有目录直接创建 / 无目录 untitled+另存为）
+- **新建文件**（菜单新建始终是虚拟 untitled 标签，首次保存走另存为；目录树「+」支持先命名再落盘）
 
 ### 插件系统
 
@@ -75,7 +75,7 @@
 | 语法高亮      | CM6 Lezer（10+ 语言包）+ highlight.js（预览区）                                                                             |
 | 国际化        | 自定义轻量 i18n 模块                                                                                                        |
 | 打包          | Vite 8 + electron-builder 26                                                                                                |
-| 字体          | IBM Plex Sans（UI）+ JetBrains Mono（代码）                                                                                 |
+| 字体          | Sora + Noto Sans SC（UI）+ JetBrains Mono（代码）；6 套预设字体组合可切换                                                  |
 
 ---
 
@@ -95,9 +95,12 @@ editor-app/
 │   ├── components/
 │   │   ├── Editor/        # 编辑器组件（CM6 封装、图片处理、扩展）
 │   │   ├── Preview/       # Markdown 预览组件
-│   │   ├── FileTree/      # 文件树侧边栏
+│   │   ├── FileTree/      # 文件树 + 大纲（TocView）
+│   │   ├── Search/        # 全局搜索面板
+│   │   ├── Home/          # 首页空白态（最近文件 / 文件夹）
+│   │   ├── Common/        # ToastContainer、UpdateToast
 │   │   ├── Layout/        # AppLayout、TitleBar、CommandPalette
-│   │   ├── Settings/      # 插件管理、关于对话框
+│   │   ├── Settings/      # 设置、插件管理、关于对话框
 │   │   └── ContextMenu/   # 通用右键菜单
 │   ├── stores/            # Zustand 状态管理
 │   ├── lib/               # 工具库（CM6 主题、Markdown 管线、i18n、插件注册表）
@@ -133,9 +136,9 @@ npm run dist
 
 ```
 release/
-├── win-unpacked/                  # 免安装目录
-├── MarkEdit.码记 0.1.0.exe        # 免安装便携版
-└── MarkEdit.码记 Setup 0.1.0.exe  # NSIS 安装程序
+├── win-unpacked/
+│   └── MarkEdit · 码记.exe            # 免安装（绿色）可执行文件
+└── MarkEdit · 码记 Setup 1.6.0.exe    # NSIS 安装程序
 ```
 
 ---

@@ -1,16 +1,30 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useWorkspaceStore, normalizePath } from '../../stores/workspaceStore'
 import { useT } from '../../lib/i18n'
 import { useToastStore } from '../../stores/toastStore'
 import { createNamedFileInDir, renameEntry } from '../../lib/workspaceActions'
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index'
 import type { FileEntry } from '../../types/electron'
 
+/**
+ * Canonical tree state key. ALL expandedDirs / childrenMap / loadingDirs keys
+ * MUST be pathKey(...). Mixing raw Windows `\` paths with `/` paths was the root
+ * cause of "chevron open, children empty" after search reveal.
+ */
+function pathKey(path: string): string {
+  return normalizePath(path).toLowerCase()
+}
+
+function pathKeyEq(a: string, b: string): boolean {
+  return pathKey(a) === pathKey(b)
+}
+
 interface TreeNodeProps {
   entry: FileEntry
   depth: number
   onClick: (entry: FileEntry) => void
   onExpand: (entry: FileEntry) => void
+  onEnsureChildren: (entry: FileEntry) => void
   onAddFile: (entry: FileEntry) => void
   onRename: (entry: FileEntry, newName: string) => Promise<boolean>
   onContextMenu: (e: React.MouseEvent, entry: FileEntry) => void
@@ -137,6 +151,7 @@ function TreeNode({
   depth,
   onClick,
   onExpand,
+  onEnsureChildren,
   onAddFile,
   onRename,
   onContextMenu,
@@ -158,14 +173,22 @@ function TreeNode({
   const [renameValue, setRenameValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const key = pathKey(entry.path)
   const isMd = (name: string) => /\.(md|markdown|txt)$/i.test(name)
-  const isExpanded = expandedDirs.has(entry.path)
-  const isLoading = loadingDirs.has(entry.path)
-  const children = childrenMap[entry.path]
-  const isActive = activeTabPath === entry.path
-  const isCreatingHere = creatingIn === entry.path
+  const isExpanded = expandedDirs.has(key)
+  const isLoading = loadingDirs.has(key)
+  const children = childrenMap[key]
+  const isActive = !!activeTabPath && pathKeyEq(entry.path, activeTabPath)
+  const isCreatingHere = !!creatingIn && pathKeyEq(creatingIn, entry.path)
 
   const paddingLeft = 12 + depth * 16
+
+  // Chevron open but no children yet → load listing under pathKey(entry.path)
+  useEffect(() => {
+    if (!entry.isDirectory || !isExpanded) return
+    if (children !== undefined || isLoading) return
+    onEnsureChildren(entry)
+  }, [entry, isExpanded, children, isLoading, onEnsureChildren])
 
   useEffect(() => {
     if (isRenaming && !renaming) {
@@ -227,6 +250,7 @@ function TreeNode({
     <>
       <div
         className="group flex items-center gap-2 pr-3 py-[5px] cursor-pointer select-none transition-all duration-100"
+        data-tree-active={isActive ? 'true' : undefined}
         style={{
           paddingLeft: `${paddingLeft}px`,
           background: isActive ? 'var(--accent-muted)' : 'transparent',
@@ -304,29 +328,39 @@ function TreeNode({
               onCancel={onCancelCreate}
             />
           )}
-          {children?.map(child => (
-            <TreeNode
-              key={child.path}
-              entry={child}
-              depth={depth + 1}
-              onClick={onClick}
-              onExpand={onExpand}
-              onAddFile={onAddFile}
-              onRename={onRename}
-              onContextMenu={onContextMenu}
-              renamingPath={renamingPath}
-              onRenameTriggered={onRenameTriggered}
-              creatingIn={creatingIn}
-              createValue={createValue}
-              onCreateValueChange={onCreateValueChange}
-              onConfirmCreate={onConfirmCreate}
-              onCancelCreate={onCancelCreate}
-              activeTabPath={activeTabPath}
-              expandedDirs={expandedDirs}
-              childrenMap={childrenMap}
-              loadingDirs={loadingDirs}
-            />
-          ))}
+          {children === undefined || isLoading ? (
+            <div
+              className="text-[10px] py-1"
+              style={{ paddingLeft: `${paddingLeft + 20}px`, color: 'var(--text-dim)' }}
+            >
+              …
+            </div>
+          ) : (
+            children.map(child => (
+              <TreeNode
+                key={child.path}
+                entry={child}
+                depth={depth + 1}
+                onClick={onClick}
+                onExpand={onExpand}
+                onEnsureChildren={onEnsureChildren}
+                onAddFile={onAddFile}
+                onRename={onRename}
+                onContextMenu={onContextMenu}
+                renamingPath={renamingPath}
+                onRenameTriggered={onRenameTriggered}
+                creatingIn={creatingIn}
+                createValue={createValue}
+                onCreateValueChange={onCreateValueChange}
+                onConfirmCreate={onConfirmCreate}
+                onCancelCreate={onCancelCreate}
+                activeTabPath={activeTabPath}
+                expandedDirs={expandedDirs}
+                childrenMap={childrenMap}
+                loadingDirs={loadingDirs}
+              />
+            ))
+          )}
         </div>
       )}
     </>
@@ -335,13 +369,24 @@ function TreeNode({
 
 export function FileTree() {
   const [entries, setEntries] = useState<FileEntry[]>([])
+  /** pathKey → expanded */
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+  /** pathKey → children */
   const [childrenMap, setChildrenMap] = useState<Record<string, FileEntry[]>>({})
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set())
   const [creatingIn, setCreatingIn] = useState<string | null>(null)
   const [createValue, setCreateValue] = useState('untitled')
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const createBusyRef = useRef(false)
+  const childrenMapRef = useRef(childrenMap)
+  const entriesRef = useRef(entries)
+
+  useEffect(() => {
+    childrenMapRef.current = childrenMap
+  }, [childrenMap])
+  useEffect(() => {
+    entriesRef.current = entries
+  }, [entries])
 
   const root = useWorkspaceStore(s => s.root)
   const refreshSignal = useWorkspaceStore(s => s.refreshSignal)
@@ -364,17 +409,40 @@ export function FileTree() {
       }
 
       try {
-        const saved = localStorage.getItem(`markedit-expanded-dirs:${root}`)
-        const nextExpanded = new Set(saved ? JSON.parse(saved) as string[] : [])
+        const keyRoot = pathKey(root)
+        const saved =
+          localStorage.getItem(`markedit-expanded-dirs:${keyRoot}`)
+          ?? localStorage.getItem(`markedit-expanded-dirs:${root}`)
+        const raw: string[] = saved ? JSON.parse(saved) as string[] : []
+        // Normalize persisted keys to pathKey form
+        const nextExpanded = new Set(raw.map(pathKey))
         const nextEntries = await window.electronAPI.listDir(root)
         if (cancelled) return
-        setChildrenMap({})
-        setExpandedDirs(nextExpanded)
+
+        setChildrenMap(prev => {
+          const next: Record<string, FileEntry[]> = {}
+          const rootN = pathKey(root)
+          for (const [k, v] of Object.entries(prev)) {
+            const nk = pathKey(k)
+            if (nk === rootN || nk.startsWith(rootN + '/')) next[nk] = v
+          }
+          return next
+        })
+        // Merge: keep current expansion + localStorage (do not wipe reveal state)
+        setExpandedDirs(prev => {
+          const next = new Set(nextExpanded)
+          for (const p of prev) next.add(pathKey(p))
+          return next
+        })
         setEntries(nextEntries)
       } catch (error) {
         if (cancelled) return
         setEntries([])
-        useToastStore.getState().showToast({ type: 'error', message: tRef.current('toast.folderOpenFailed'), detail: error instanceof Error ? error.message : String(error) })
+        useToastStore.getState().showToast({
+          type: 'error',
+          message: tRef.current('toast.folderOpenFailed'),
+          detail: error instanceof Error ? error.message : String(error),
+        })
       }
     }
 
@@ -386,94 +454,208 @@ export function FileTree() {
 
   useEffect(() => {
     if (!root) return
-    localStorage.setItem(`markedit-expanded-dirs:${root}`, JSON.stringify([...expandedDirs]))
+    const keyRoot = pathKey(root)
+    localStorage.setItem(
+      `markedit-expanded-dirs:${keyRoot}`,
+      JSON.stringify([...expandedDirs].map(pathKey)),
+    )
   }, [expandedDirs, root])
 
   const handleExpand = useCallback(async (entry: FileEntry) => {
     if (!entry.isDirectory || !window.electronAPI) return
+    const key = pathKey(entry.path)
 
-    if (expandedDirs.has(entry.path)) {
+    // Collapse
+    if (expandedDirs.has(key)) {
       setExpandedDirs(prev => {
         const next = new Set(prev)
-        next.delete(entry.path)
+        next.delete(key)
         return next
       })
       return
     }
 
-    if (childrenMap[entry.path]) {
-      setExpandedDirs(prev => new Set(prev).add(entry.path))
+    // Expand — if children already cached, just mark expanded
+    if (childrenMap[key]) {
+      setExpandedDirs(prev => new Set(prev).add(key))
       return
     }
 
-    setLoadingDirs(prev => new Set(prev).add(entry.path))
+    setLoadingDirs(prev => new Set(prev).add(key))
     try {
-      const children = await window.electronAPI!.listDir(entry.path)
-      setChildrenMap(prev => ({ ...prev, [entry.path]: children }))
-      setExpandedDirs(prev => new Set(prev).add(entry.path))
+      const children = await window.electronAPI.listDir(entry.path)
+      setChildrenMap(prev => ({ ...prev, [key]: children }))
+      setExpandedDirs(prev => new Set(prev).add(key))
     } catch {
+      // leave collapsed
     } finally {
       setLoadingDirs(prev => {
         const next = new Set(prev)
-        next.delete(entry.path)
+        next.delete(key)
         return next
       })
     }
   }, [expandedDirs, childrenMap])
 
-  useEffect(() => {
-    if (!activeTabPath || !root || !window.electronAPI) return
-    const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+$/, '')
-    const normalizedPath = activeTabPath.replace(/\\/g, '/')
-    // Require path boundary so root "E:/notes" does not match "E:/notes2/..."
-    const underRoot =
-      normalizedPath === normalizedRoot ||
-      normalizedPath.toLowerCase().startsWith(normalizedRoot.toLowerCase() + '/')
-    if (!underRoot) return
+  /** Load children when expanded but listing missing (chevron open / empty body). */
+  const ensureChildren = useCallback(async (entry: FileEntry) => {
+    if (!entry.isDirectory || !window.electronAPI) return
+    const key = pathKey(entry.path)
+    if (childrenMapRef.current[key]) return
 
-    const relative = normalizedPath.slice(normalizedRoot.length).replace(/^\//, '')
-    const parts = relative.split('/').filter(Boolean)
-    if (parts.length <= 1) return
-
-    // Prefer native separator from listDir entries so childrenMap keys match.
-    const sep = root.includes('\\') && !root.includes('/') ? '\\' : '/'
-    const dirs: string[] = []
-    let current = root.replace(/[\\/]$/, '')
-    for (const part of parts.slice(0, -1)) {
-      current = current + sep + part
-      dirs.push(current)
-    }
-
-    setExpandedDirs(prev => new Set([...prev, ...dirs]))
-    dirs.forEach(async (dir) => {
-      // childrenMap may key by either separator; check normalized
-      const already = Object.keys(childrenMap).some(
-        (k) => k.replace(/\\/g, '/') === dir.replace(/\\/g, '/'),
-      )
-      if (already) return
-      try {
-        const children = await window.electronAPI!.listDir(dir)
-        setChildrenMap(prev => ({ ...prev, [dir]: prev[dir] || children }))
-      } catch {
-        // ignore
-      }
+    setLoadingDirs(prev => {
+      if (prev.has(key)) return prev
+      return new Set(prev).add(key)
     })
-  }, [activeTabPath, root, childrenMap])
+    try {
+      const children = await window.electronAPI.listDir(entry.path)
+      setChildrenMap(prev => ({ ...prev, [key]: children }))
+      setExpandedDirs(prev => new Set(prev).add(key))
+    } catch {
+    } finally {
+      setLoadingDirs(prev => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }, [])
+
+  /**
+   * Expand EVERY ancestor of targetPath.
+   * Example: <root>/src/stores/file.ts → expand `src` AND `src/stores`.
+   *
+   * Two sources of truth, both applied:
+   * 1) Path-string ancestors (nRoot + "/src", nRoot + "/src/stores") — never skip outer dirs
+   * 2) listDir walk for childrenMap under the same pathKey keys
+   *
+   * Serialized so search's staggered reveals don't race / drop outer dirs.
+   */
+  const revealChainRef = useRef(Promise.resolve())
+  const revealLatestRef = useRef(0)
+
+  const revealPath = useCallback((targetPath: string) => {
+    if (!targetPath || !root || !window.electronAPI) return
+
+    const ticket = ++revealLatestRef.current
+    const rootSnapshot = root
+    const api = window.electronAPI
+
+    revealChainRef.current = revealChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        if (ticket !== revealLatestRef.current) return
+
+        const nRoot = pathKey(rootSnapshot)
+        const nPath = pathKey(targetPath)
+        if (nPath !== nRoot && !nPath.startsWith(nRoot + '/')) return
+
+        const relative = nPath.slice(nRoot.length).replace(/^\//, '')
+        const parts = relative.split('/').filter(Boolean)
+        // dirs only (drop filename)
+        const dirParts = parts.slice(0, -1)
+        if (dirParts.length === 0) return
+
+        // --- (1) Pure path-key ancestors: ALWAYS expand every outer folder ---
+        // e.g. ["e:/proj/src", "e:/proj/src/stores"]
+        const ancestorKeys: string[] = []
+        let acc = nRoot
+        for (const part of dirParts) {
+          acc = `${acc}/${part}`
+          ancestorKeys.push(acc)
+        }
+
+        // --- (2) Walk disk for children listings under matching pathKeys ---
+        // Prefer real entry.path from listDir so FS calls use native separators.
+        const childrenUpdates: Record<string, FileEntry[]> = {}
+        try {
+          // Root listing
+          let listing =
+            entriesRef.current.length > 0
+              ? entriesRef.current
+              : await api.listDir(rootSnapshot)
+          if (ticket !== revealLatestRef.current) return
+
+          if (entriesRef.current.length === 0) {
+            setEntries(listing)
+            entriesRef.current = listing
+          }
+
+          for (const part of dirParts) {
+            if (ticket !== revealLatestRef.current) return
+            const child = listing.find(
+              (c) => c.isDirectory && c.name.toLowerCase() === part.toLowerCase(),
+            )
+            if (!child) break
+
+            const childKey = pathKey(child.path)
+            // Prefer pathKey from real entry (should equal ancestorKeys[i])
+            let kids = childrenMapRef.current[childKey]
+            if (!kids) {
+              kids = await api.listDir(child.path)
+              if (ticket !== revealLatestRef.current) return
+            }
+            childrenUpdates[childKey] = kids
+            childrenMapRef.current = { ...childrenMapRef.current, [childKey]: kids }
+            listing = kids
+          }
+        } catch {
+          // still apply ancestorKeys expand below
+        }
+
+        if (ticket !== revealLatestRef.current) return
+
+        // Apply children first, then expand ALL ancestors (outer + inner)
+        if (Object.keys(childrenUpdates).length > 0) {
+          setChildrenMap((prev) => ({ ...prev, ...childrenUpdates }))
+        }
+        setExpandedDirs((prev) => {
+          const next = new Set(prev)
+          for (const k of ancestorKeys) next.add(k)
+          // also keys we actually listed (in case pathKey of entry differs slightly)
+          for (const k of Object.keys(childrenUpdates)) next.add(k)
+          return next
+        })
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document
+              .querySelector('[data-tree-active="true"]')
+              ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+          })
+        })
+      })
+  }, [root])
+
+  useEffect(() => {
+    if (!activeTabPath) return
+    revealPath(activeTabPath)
+  }, [activeTabPath, root, entries, revealPath])
+
+  useEffect(() => {
+    const onReveal = (e: Event) => {
+      const path = (e as CustomEvent<{ path?: string }>).detail?.path
+      if (path) revealPath(path)
+    }
+    window.addEventListener('filetree:reveal', onReveal)
+    return () => window.removeEventListener('filetree:reveal', onReveal)
+  }, [revealPath])
 
   const handleClick = async (entry: FileEntry) => {
     if (!window.electronAPI) return
     const { content } = await window.electronAPI.readFile(entry.path)
-    openFile(entry.path, content)
+    openFile(entry.path, content, { allowRootChange: false })
   }
 
   const beginCreateIn = useCallback(async (dirPath: string) => {
     setCreatingIn(dirPath)
     setCreateValue('untitled')
-    setExpandedDirs(prev => new Set(prev).add(dirPath))
-    if (!childrenMap[dirPath] && window.electronAPI && root && dirPath !== root) {
+    const key = pathKey(dirPath)
+    setExpandedDirs(prev => new Set(prev).add(key))
+    if (!childrenMap[key] && window.electronAPI && root && pathKey(dirPath) !== pathKey(root)) {
       try {
         const children = await window.electronAPI.listDir(dirPath)
-        setChildrenMap(prev => ({ ...prev, [dirPath]: children }))
+        setChildrenMap(prev => ({ ...prev, [key]: children }))
       } catch {
         // ignore
       }
@@ -508,12 +690,12 @@ export function FileTree() {
     if (path) {
       if (window.electronAPI) {
         try {
-          if (root && creatingIn === root) {
+          if (root && pathKeyEq(creatingIn, root)) {
             const next = await window.electronAPI.listDir(root)
             setEntries(next)
           } else {
             const children = await window.electronAPI.listDir(creatingIn)
-            setChildrenMap(prev => ({ ...prev, [creatingIn]: children }))
+            setChildrenMap(prev => ({ ...prev, [pathKey(creatingIn)]: children }))
           }
         } catch {
           // refreshSignal handles full reload
@@ -550,7 +732,7 @@ export function FileTree() {
       const ok = entry.isDirectory ? await window.electronAPI.deleteDir(entry.path) : await window.electronAPI.deleteFile(entry.path)
       if (!ok) throw new Error(entry.path)
       const store = useWorkspaceStore.getState()
-      const isOpen = store.openTabs.some(tab => tab.path === entry.path)
+      const isOpen = store.openTabs.some(tab => pathKeyEq(tab.path, entry.path))
       if (isOpen) store.closeTab(entry.path)
       store.triggerRefresh()
       showToast({ type: 'success', message: t(entry.isDirectory ? 'toast.folderDeleted' : 'toast.fileDeleted'), detail: entry.path })
@@ -598,7 +780,7 @@ export function FileTree() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-0.5">
-        {entries.length === 0 && !(creatingIn && root && creatingIn === root) && (
+        {entries.length === 0 && !(creatingIn && root && pathKeyEq(creatingIn, root)) && (
           <div className="px-4 py-10 text-center" style={{ color: 'var(--text-dim)' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="mx-auto mb-2" style={{ opacity: 0.3 }}>
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
@@ -607,7 +789,7 @@ export function FileTree() {
             <div className="text-xs">{root ? t('fileTree.empty') : t('fileTree.hint')}</div>
           </div>
         )}
-        {creatingIn && root && creatingIn === root && (
+        {creatingIn && root && pathKeyEq(creatingIn, root) && (
           <CreateFileInput
             depth={0}
             value={createValue}
@@ -623,6 +805,7 @@ export function FileTree() {
             depth={0}
             onClick={handleClick}
             onExpand={handleExpand}
+            onEnsureChildren={ensureChildren}
             onAddFile={handleAddFile}
             onRename={handleRename}
             onContextMenu={handleContextMenu}

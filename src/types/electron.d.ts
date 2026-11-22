@@ -46,6 +46,8 @@ export interface ElectronAPI {
   onFileOpened: (cb: (data: { path: string; content: string }) => void) => void
   onFolderOpened: (cb: (data: { path: string }) => void) => void
   onMenuSave: (cb: () => void) => void
+  /** 窗口关闭前回调；返回 false 取消关闭（用于逐标签确认未保存内容） */
+  onBeforeClose: (cb: () => boolean | Promise<boolean>) => void
   getAppPath: () => Promise<string>
   setLanguage: (lang: string) => void
   getStartupArgs: () => Promise<{ type: 'file' | 'folder'; path: string; content?: string }[]>
